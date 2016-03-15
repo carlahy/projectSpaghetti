@@ -5,19 +5,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Iterator;
 
-import org.apache.bcel.classfile.ClassParser;
-import org.apache.bcel.classfile.Code;
-import org.apache.bcel.classfile.JavaClass;
-import org.apache.bcel.classfile.Method;
-import org.apache.bcel.generic.ClassGen;
-import org.apache.bcel.generic.ConstantPoolGen;
-import org.apache.bcel.generic.InstructionHandle;
-import org.apache.bcel.generic.InstructionList;
+import org.apache.bcel.classfile.*;
+import org.apache.bcel.generic.*;
+import org.apache.bcel.Repository;
 import org.apache.bcel.util.InstructionFinder;
-import org.apache.bcel.generic.MethodGen;
-import org.apache.bcel.generic.TargetLostException;
-
-
 
 public class ConstantFolder
 {
@@ -44,7 +35,16 @@ public class ConstantFolder
 		ConstantPoolGen cpgen = cgen.getConstantPool();
 
 		// Implement your optimization here
-        
+		ConstantPool cp = cpgen.getConstantPool(); //get current constant pool
+		Constant[] constants = cp.getConstantPool(); //get constants in the pool
+
+		for(int i=0; i<constants.length; i++) {
+			if (constants[i] instanceof ConstantString) {
+				ConstantString cs = (ConstantString) constants[i];
+                cp.setConstant(cs.getStringIndex(), new ConstantUtf8("HOT DOG"));
+			}
+		}
+
 		this.optimized = gen.getJavaClass();
 	}
 

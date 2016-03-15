@@ -11,7 +11,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 
 /**
  * COMP207p courswork 2
- * Driver class: automatically apply optimisation to all class files in the input directory and save the optimised classes into the output directory
+ * Driver class: automatically apply optimisation to all class files in the
+ * input directory and save the optimised classes into the output directory
  */
 
 public class Main extends SimpleFileVisitor<Path> {
