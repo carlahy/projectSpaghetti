@@ -45,9 +45,26 @@ public class ConstantFolder
             MethodGen mgen = new MethodGen(methods[m], original.getClassName(), cpgen);
 
             InstructionList ilist = mgen.getInstructionList();
-            //InstructionFinder ifinder = new InstructionFinder(ilist);
+            InstructionFinder ifinder = new InstructionFinder(ilist);
+            // Regex pattern to find using ifinder
+            //String pat = "";
 
-            System.out.println("Instructions in method "+ m +": " + ilist.getLength());
+            System.out.println(original.getClassName() + ": Method "+ m + "/" + methods.length +
+                    " : " + methods[m].getName() + " : " + ilist.getLength() + " instructions");
+            for (int i = 0; i < ilist.getLength(); ++i) {
+                Instruction current = ilist.getInstructions()[i];
+                short op = current.getOpcode();
+                System.out.println("\t" + current + "\t" + current.toString(cp) + "\topcode " + op);
+                if (op >= 2 && op <= 8) {
+                    System.out.println("Iconst found");
+                }
+                else if (op == 96) {
+                    System.out.println("Adding 2 integers");
+                }
+                else if (op >= 12 && op <= 14) {
+                    System.out.println("Loading constant from pool");
+                }
+            }
         }
 
 
