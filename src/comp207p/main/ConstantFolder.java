@@ -8,6 +8,7 @@ import java.util.Iterator;
 import org.apache.bcel.classfile.*;
 import org.apache.bcel.generic.*;
 import org.apache.bcel.Repository;
+import org.apache.bcel.generic.InstructionList;
 import org.apache.bcel.util.InstructionFinder;
 
 public class ConstantFolder
@@ -37,6 +38,18 @@ public class ConstantFolder
 		// Implement your optimization here
 		ConstantPool cp = cpgen.getConstantPool(); //get current constant pool
 		Constant[] constants = cp.getConstantPool(); //get constants in the pool
+
+        Method[] methods = cgen.getMethods();
+
+        for (int m = 0; m < methods.length; ++m) {
+            MethodGen mgen = new MethodGen(methods[m], original.getClassName(), cpgen);
+
+            InstructionList ilist = mgen.getInstructionList();
+            //InstructionFinder ifinder = new InstructionFinder(ilist);
+
+            System.out.println("Instructions in method "+ m +": " + ilist.getLength());
+        }
+
 
 		for(int i=0; i<constants.length; i++) {
 			if (constants[i] instanceof ConstantString) {
