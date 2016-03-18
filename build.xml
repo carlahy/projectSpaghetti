@@ -74,7 +74,7 @@
     </copy>
   </target>
   
-  <!-- generate the SimpleGolding classfile using Jasmin-->
+  <!-- generate the SimpleFolding classfile using Jasmin-->
   <target name="generate" depends="compile.source" description="Jasmin generation of classfiles">
     <java classname="jasmin.Main">
       <classpath refid="library.classpath"/>

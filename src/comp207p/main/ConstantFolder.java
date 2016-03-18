@@ -48,17 +48,20 @@ public class ConstantFolder
             InstructionFinder ifinder = new InstructionFinder(ilist);
             // Regex pattern to find using ifinder
             //String pat = "";
-
+            //Stack stack = new Stack();
             System.out.println(original.getClassName() + ": Method "+ m + "/" + methods.length +
                     " : " + methods[m].getName() + " : " + ilist.getLength() + " instructions");
             for (int i = 0; i < ilist.getLength(); ++i) {
                 Instruction current = ilist.getInstructions()[i];
+
                 short op = current.getOpcode();
                 System.out.println("\t" + current + "\t" + current.toString(cp) + "\topcode " + op);
                 if (op >= 2 && op <= 8) {
+                    //stack.push( constant );
                     System.out.println("Iconst found");
                 }
                 else if (op == 96) {
+                    System.out.println("2 previous instructions ===== " + ilist.getInstructions()[i-1] );
                     System.out.println("Adding 2 integers");
                 }
                 else if (op >= 12 && op <= 14) {
