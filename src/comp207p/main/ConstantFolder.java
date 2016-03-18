@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.Stack;
 
 import org.apache.bcel.classfile.*;
 import org.apache.bcel.generic.*;
@@ -29,6 +30,13 @@ public class ConstantFolder
 			e.printStackTrace();
 		}
 	}
+    private void pop2(Stack<Number> stack) {
+        boolean twice = !(stack.peek() instanceof Long || stack.peek() instanceof Double);
+        stack.pop();
+        if (twice) {
+            stack.pop();
+        }
+    }
 	
 	public void optimize()
 	{
@@ -39,9 +47,11 @@ public class ConstantFolder
 		ConstantPool cp = cpgen.getConstantPool(); //get current constant pool
 		Constant[] constants = cp.getConstantPool(); //get constants in the pool
 
+
         Method[] methods = cgen.getMethods();
 
         for (int m = 0; m < methods.length; ++m) {
+            Stack<Number> stack = new Stack<Number>();
             MethodGen mgen = new MethodGen(methods[m], original.getClassName(), cpgen);
 
             InstructionList ilist = mgen.getInstructionList();
@@ -55,18 +65,44 @@ public class ConstantFolder
                 Instruction current = ilist.getInstructions()[i];
 
                 short op = current.getOpcode();
+                if (current instanceof IndexedInstruction) {
+                    int index = ((IndexedInstruction) current).getIndex();
+                    switch(op) {
+                        case 0x10:
+                            stack.push(index);
+                            break;
+                    }
+                }
+
                 System.out.println("\t" + current + "\t" + current.toString(cp) + "\topcode " + op);
-                if (op >= 2 && op <= 8) {
-                    //stack.push( constant );
+
+                switch(op) {
+                    case 0x09: stack.push(new Long(0)); break;
+                    case 0x0a: stack.push(new Long(1)); break;
+                    case 0x57: stack.pop(); break;
+                    case 0x58: pop2(stack); break;
+                    case 0x96: System.out.println("Adding 2 integers"); break;
+                    case 0x01: stack.push(null); break;
+
+                    case 0x0e: stack.push(new Double(0.0)); break;
+                    case 0x0f: stack.push(new Double(1.0)); break;
+                    case 0x59: stack.push(stack.peek()); break;
+
+                }
+                if (op >= 0x02 && op <= 0x08) {
                     System.out.println("Iconst found");
+                    stack.push(op - 3);
                 }
-                else if (op == 96) {
-                    System.out.println("2 previous instructions ===== " + ilist.getInstructions()[i-1] );
-                    System.out.println("Adding 2 integers");
+                else if (op >= 0x26 && op <= 0x29) {
+                    stack.push(op-26);
                 }
-                else if (op >= 12 && op <= 14) {
+                else if (op >= 0x12 && op <= 0x14) {
                     System.out.println("Loading constant from pool");
                 }
+            }
+            System.out.println("Stack");
+            for (int i = 0; i < stack.size(); ++i) {
+                System.out.println(stack.get(i));
             }
         }
 
@@ -79,6 +115,8 @@ public class ConstantFolder
 		}
 
 		this.optimized = gen.getJavaClass();
+
+
 	}
 
 	
