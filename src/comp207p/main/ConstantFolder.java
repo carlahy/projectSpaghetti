@@ -30,6 +30,7 @@ public class ConstantFolder
 			e.printStackTrace();
 		}
 	}
+
     private void pop2(Stack<Number> stack) {
         boolean twice = !(stack.peek() instanceof Long || stack.peek() instanceof Double);
         stack.pop();
@@ -46,7 +47,7 @@ public class ConstantFolder
 		// Implement your optimization here
 		ConstantPool cp = cpgen.getConstantPool(); //get current constant pool
 		Constant[] constants = cp.getConstantPool(); //get constants in the pool
-
+		ArrayList<Number> localvars = new ArrayList<Number>();
 
         Method[] methods = cgen.getMethods();
 
@@ -112,6 +113,13 @@ public class ConstantFolder
 //                    case 0x1f: stack.push(localvars[1]); break;
 //
 //                    case 0x11: stack.push(); break; //push a short on the stack
+
+                    case 0x3a: localvars.set(index, i); break; 
+					case 0x4a: localvars.set(0, i); break;
+					case 0x4c: localvars.set(1, i); break;
+					case 0x4d: localvars.set(2, i); break;
+					case 0x4e: localvars.set(3, i); break;
+
 
                 }
                 if (op >= 0x02 && op <= 0x08) { //Load int
