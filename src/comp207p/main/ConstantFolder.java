@@ -83,22 +83,57 @@ public class ConstantFolder
                     case 0x58: pop2(stack); break;
                     case 0x96: System.out.println("Adding 2 integers"); break;
                     case 0x01: stack.push(null); break;
+                    //todo: what about 12?
 
                     case 0x0e: stack.push(new Double(0.0)); break;
                     case 0x0f: stack.push(new Double(1.0)); break;
                     case 0x59: stack.push(stack.peek()); break;
 
+                    //Load reference from local variables //TODO REFERENCE
+                    case 0x19: stack.push(localvars[index]); break; //index access??
+                    case 0x2a: stack.push(localvars[0]); break;
+                    case 0x2b: stack.push(localvars[1]); break;
+                    case 0x2c: stack.push(localvars[2]); break;
+                    case 0x2d: stack.push(localvars[3]); break;
+
+                    //Load int from local variables
+                    case 0x15: stack.push(localvars[index]); break;
+                    case 0x1a: stack.push(localvars[0]); break;
+                    case 0x1b: stack.push(localvars[1]); break;
+                    case 0x1c: stack.push(localvars[2]); break;
+                    case 0x1d: stack.push(localvars[3]); break;
+                    //Load float from local variables
+                    case 0x1e: stack.push(localvars[0]); break;
+                    case 0x1f: stack.push(localvars[1]); break;
+
+                    case 0x10: stack.push(); break; //bipush: push byte as an int value
+                    case 0x11: stack.push(); break; //push a short on the stack
+
                 }
-                if (op >= 0x02 && op <= 0x08) {
+                if (op >= 0x02 && op <= 0x08) { //Load int
                     System.out.println("Iconst found");
                     stack.push(op - 3);
                 }
-                else if (op >= 0x26 && op <= 0x29) {
+                else if (op >= 0x12 && op <= 0x14) { //Push constant[#index] from constant pool
+                    System.out.println("Loading constant from pool");
+                    stack.push(cp.getConstant(index)); //how do we access the constant?
+                }
+                else if (op >= 0x15 && op <= 0x19){ //Load __ from local var[#index]
+                    stack.push();
+                }
+                else if (op >= 0x20 && op <= 0x21) { //Load long from local var
+
+                }
+                else if (op >= 0x22 && op <= 0x25) { //Load float from local var
+
+                }
+                else if (op >= 0x26 && op <= 0x29) { //Load double from local var
                     stack.push(op-26);
                 }
-                else if (op >= 0x12 && op <= 0x14) {
-                    System.out.println("Loading constant from pool");
+                else if (op >= 0x30 && op <= 0x35) { //Load __ from array[#index]
+                    stack.push();
                 }
+
             }
             System.out.println("Stack");
             for (int i = 0; i < stack.size(); ++i) {
@@ -115,8 +150,6 @@ public class ConstantFolder
 		}
 
 		this.optimized = gen.getJavaClass();
-
-
 	}
 
 	
