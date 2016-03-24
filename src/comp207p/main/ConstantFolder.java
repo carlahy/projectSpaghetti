@@ -29,7 +29,7 @@ public class ConstantFolder
 		}
 	}
 
-    public int parseBipush(String bipush) {
+    public int parseBiSipush(String bipush) {
         String result = "";
         int i=7;
         while (i < bipush.length()) {
@@ -107,26 +107,37 @@ public class ConstantFolder
 
                 System.out.println("\t" + current + "\t" + current.toString(cp) +  "\topcode " + op);
 
+                double vard1, vard2, resultd; float varf1, varf2, resultf; long varl1, varl2, resultl; int vari1, vari2, resulti;
+
                 switch(op) {
                     case 0x09: stack.push(new Long(0)); break;
                     case 0x0a: stack.push(new Long(1)); break;
                     case 0x57: stack.pop(); break;
                     case 0x58: pop2(stack); break;
-                    case 0x96: System.out.println("Adding 2 integers"); break;
                     case 0x01: stack.push(null); break;
 
                     //adding two numbers
-                    case 0x63:
-                    case 0x62:
-                    case 0x61:
-                    case 0x60: pop2
+                    case 0x63: vard1 = (double) stack.pop();
+                        vard2 = (double) stack.pop();
+                        resultd = vard1 + vard2; break;
+                    case 0x62: varf1 = (float) stack.pop();
+                        varf2 = (float) stack.pop();
+                        resultf = varf1 + varf2; break;
+                    case 0x61: varl1 = (long) stack.pop();
+                        varl2 = (long) stack.pop();
+                        resultl = varl1 + varl2; break;
+                    case 0x60: vari1 = (int) stack.pop();
+                        vari2 = (int) stack.pop();
+                        resulti = vari1 + vari2; break;
 
                     case 0x0e: stack.push(new Double(0.0)); break;
                     case 0x0f: stack.push(new Double(1.0)); break;
                     case 0x59: stack.push(stack.peek()); break;
 
                     //BIPUSH
-                    case 0x10: stack.push(parseBipush(current.toString(cp))); break;
+                    case 0x10:
+                    case 0x11: stack.push(parseBiSipush(current.toString(cp)));
+                        System.out.println("\t>>> Pushing value onto stack: " + parseBiSipush(current.toString(cp))); break;
 
                     //LOADING REFERENCE FROM LOCAL VARIABLES
                     case 0x2a: stack.push(localvars.get(0));break;
@@ -134,21 +145,23 @@ public class ConstantFolder
                     case 0x2c: stack.push(localvars.get(2));break;
                     case 0x2d: stack.push(localvars.get(3));break;
 
-      //  case 0x11: stack.push(); break; //push a short on the stack
-
                     //storing anything into 0 of hashmap local variables
                     case 0x4b: 
                     case 0x47:
                     case 0x43:
                     case 0x3b: 
-                    case 0x3f: localvars.put(0, stack.peek()); stack.pop(); break;
+                    case 0x3f: localvars.put(0, stack.peek());
+                        System.out.println("\t>>> Popping value off the stack " + stack.peek());
+                        stack.pop(); break;
 
                     //storing anything into 1 of hashmap local variables
                     case 0x4c: 
                     case 0x48:
                     case 0x44:
                     case 0x3c: 
-                    case 0x40: localvars.put(1, stack.peek()); stack.pop(); break;
+                    case 0x40: localvars.put(1, stack.peek());
+                        System.out.println("\t>>> Popping value off the stack " + stack.peek());
+                        stack.pop(); break;
 
                     //storing anything into 2 of hashmap local variables
                     case 0x4d: 
@@ -165,8 +178,8 @@ public class ConstantFolder
                     case 0x42: localvars.put(3, stack.peek()); stack.pop(); break;
                 }
 
-                else if (op >= 0x02 && op <= 0x08) { //Load int
-                    System.out.println("\t >>> Iconst found");
+                if (op >= 0x02 && op <= 0x08) { //Load int
+                    System.out.println("\t>>> Iconst found");
                     stack.push(op - 3);
                 }
                 //LOADING NUMBER (int, long, float, double) FROM LOCAL VARIABLES
@@ -174,7 +187,7 @@ public class ConstantFolder
                     stack.push((Number)localvars.get(0));
                 }
                 else if (op == 0x27 || op == 0x23 || op == 0x1b || op == 0x1f) {
-                    System.out.println("\t >>> Pushing value onto stack " +  localvars.get(1));
+                    System.out.println("\t>>> Pushing value onto stack " +  localvars.get(1));
                     stack.push((Number)localvars.get(1));
                 }
                 else if (op == 0x28 || op == 0x24 || op == 0x1c || op == 0x20) {
@@ -184,10 +197,8 @@ public class ConstantFolder
                     stack.push((Number)localvars.get(3));
                 }
             }
-            System.out.println("Stack");
-            for (int i = 0; i < stack.size(); ++i) {
-                System.out.println(stack.get(i));
-            }
+
+        printStack(stack);
         }
 
 
@@ -197,9 +208,15 @@ public class ConstantFolder
                 cp.setConstant(cs.getStringIndex(), new ConstantUtf8("HOT DOG"));
 			}
 		}
-
 		this.optimized = gen.getJavaClass();
 	}
+
+    public void printStack(Stack<Object> stack) {
+        System.out.println("Stack");
+        for (int i = 0; i < stack.size(); ++i) {
+            System.out.println(stack.get(i));
+        }
+    }
 
 	
 	public void write(String optimisedFilePath)
