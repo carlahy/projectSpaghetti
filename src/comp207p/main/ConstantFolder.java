@@ -3,8 +3,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.Stack;
+import java.util.*;
 
 import org.apache.bcel.classfile.*;
 import org.apache.bcel.generic.*;
@@ -71,15 +70,17 @@ public class ConstantFolder
 
                     switch(op) {
                         case 0x10: stack.push(index); break;
+                        case 0x3a: localvars.set(index, i); break;
 
                     }
                     if (op >= 0x12 && op <= 0x14) { //Push constant[#index] from constant pool
                         System.out.println("Loading constant from pool");
                         stack.push(cp.getConstant(index));
                     }
-                    else if (op >= 0x15 && op <= 0x19){ //Load __ from local var[#index]
-                        stack.push();
+                    else if (op >= 0x15 && op <= 0x19){ //Load from local var[#index]
+                        stack.push(localvars[index]);
                     }
+
                 }
 
                 System.out.println("\t" + current + "\t" + current.toString(cp) + "\topcode " + op);
@@ -91,30 +92,20 @@ public class ConstantFolder
                     case 0x58: pop2(stack); break;
                     case 0x96: System.out.println("Adding 2 integers"); break;
                     case 0x01: stack.push(null); break;
-                    //todo: what about 12?
 
                     case 0x0e: stack.push(new Double(0.0)); break;
                     case 0x0f: stack.push(new Double(1.0)); break;
                     case 0x59: stack.push(stack.peek()); break;
 
-//                    //Load reference from local variables //TODO REFERENCE
-//                    case 0x2a: stack.push(localvars[0]); break;
-//                    case 0x2b: stack.push(localvars[1]); break;
-//                    case 0x2c: stack.push(localvars[2]); break;
-//                    case 0x2d: stack.push(localvars[3]); break;
-//
-//                    //Load int from local variables
-//                    case 0x1a: stack.push(localvars[0]); break;
-//                    case 0x1b: stack.push(localvars[1]); break;
-//                    case 0x1c: stack.push(localvars[2]); break;
-//                    case 0x1d: stack.push(localvars[3]); break;
-//                    //Load float from local variables
-//                    case 0x1e: stack.push(localvars[0]); break;
-//                    case 0x1f: stack.push(localvars[1]); break;
-//
-//                    case 0x11: stack.push(); break; //push a short on the stack
+                    //  case 0x11: stack.push(); break; //push a short on the stack
 
-                    case 0x3a: localvars.set(index, i); break; 
+                    //REFERENCES
+//                    case 0x32:
+//                        int index = stack.peek(); stack.pop();
+//                        reference arrayref = stack.peek(); stack.pop();
+//                        stack.push(arrayref[index].reference); break;
+
+                //STORING
 					case 0x4a: localvars.set(0, i); break;
 					case 0x4c: localvars.set(1, i); break;
 					case 0x4d: localvars.set(2, i); break;
@@ -122,23 +113,26 @@ public class ConstantFolder
 
 
                 }
-                if (op >= 0x02 && op <= 0x08) { //Load int
+                //LOADING INT
+                if (op >= 0x02 && op <= 0x08) { //Load int values
                     System.out.println("Iconst found");
                     stack.push(op - 3);
                 }
-//                else if (op >= 0x12 && op <= 0x14) { //Push constant[#index] from constant pool
-//                    System.out.println("Loading constant from pool");
-////                    stack.push(cp.getConstant(index)); //how do we access the constant?
-//                }
-                else if (op >= 0x20 && op <= 0x21) { //Load long from local var
+                //LOADING FROM LOCAL VARIABLES
+                else if (op == 0x2a || op == 0x26 || op == 0x22 || op == 0x1a || op == 0x1e) {
+                    stack.push(localvars[0]);
+                }
+                else if (op == 0x2b || op == 0x27 || op == 0x23 || op == 0x1b || op == 0x1f) {
+                    stack.push(localvars[1]);
+                }
+                else if (op == 0x2c || op == 0x28 || op == 0x24 || op == 0x1c || op == 0x20) {
+                    stack.push(localvars[2]);
+                }
+                else if (op == 0x2d || op == 0x29 || op == 0x25 || op == 0x1d || op == 0x21) {
+                    stack.push(localvars[3]);
+                }
 
-                }
-                else if (op >= 0x22 && op <= 0x25) { //Load float from local var
 
-                }
-                else if (op >= 0x26 && op <= 0x29) { //Load double from local var
-//                    stack.push(op-26);
-                }
                 else if (op >= 0x30 && op <= 0x35) { //Load __ from array[#index]
 //                    stack.push();
                 }
