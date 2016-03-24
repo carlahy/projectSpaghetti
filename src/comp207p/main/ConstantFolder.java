@@ -48,6 +48,11 @@ public class ConstantFolder
         }
     }
 
+    private void peekpop2(Stack<Object> stack){
+        stack.pop();
+        stack.pop();
+    }
+
 	public void optimize()
 	{
 		ClassGen cgen = new ClassGen(original);
