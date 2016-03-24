@@ -47,7 +47,7 @@ public class ConstantFolder
 		// Implement your optimization here
 		ConstantPool cp = cpgen.getConstantPool(); //get current constant pool
 		Constant[] constants = cp.getConstantPool(); //get constants in the pool
-		ArrayList<Number> localvars = new ArrayList<Number>();
+		HashMap localvars = new HashMap();
 
         Method[] methods = cgen.getMethods();
 
@@ -103,6 +103,7 @@ public class ConstantFolder
                     case 0x1b: stack.push(localvars[1]); break;
                     case 0x1c: stack.push(localvars[2]); break;
                     case 0x1d: stack.push(localvars[3]); break;
+
                     //Load float from local variables
                     case 0x1e: stack.push(localvars[0]); break;
                     case 0x1f: stack.push(localvars[1]); break;
@@ -110,15 +111,27 @@ public class ConstantFolder
                     case 0x10: stack.push(); break; //bipush: push byte as an int value
                     case 0x11: stack.push(); break; //push a short on the stack
 
-                    case 0x3a: localvars.set(index, i); break; 
-					case 0x4a: localvars.set(0, i); break;
-					case 0x4c: localvars.set(1, i); break;
-					case 0x4d: localvars.set(2, i); break;
-					case 0x4e: localvars.set(3, i); break;
-
+                    //storing anything into index of hashmap local variables
+                    case 0x3a: 
+                    case 0x38:
+                    case 0x36:
+                    case 0x37: 
+                    case 0x39: localvars.put(index, stack.peek()); break;
 
                 }
-                if (op >= 0x02 && op <= 0x08) { //Load int
+                if(op == 0x4b || op == 0x47 || op == 0x43 || op == 0x3b || op == 0x3f){ //store in l.v. 0
+                    localvars.put(0, stack.peek());
+                }
+                else if(op == 0x4c || op == 0x48 || op == 0x44 || op == 0x3c || op == 0x40){ //store in l.v. 1
+                    localvars.put(1, stack.peek());
+                }
+                else if(op == 0x4d || op == 0x49 || op == 0x45 || op == 0x3d || op == 0x41){ //store in l.v. 2
+                    localvars.put(2, stack.peek());
+                }
+                else if(op == 0x4e || op == 0x4a || op == 0x46 || op == 0x3e || op == 0x42){ //store in l.v. 3
+                    localvars.put(3, stack.peek());
+                }
+                else if (op >= 0x02 && op <= 0x08) { //Load int
                     System.out.println("Iconst found");
                     stack.push(op - 3);
                 }
