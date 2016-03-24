@@ -67,18 +67,28 @@ public class ConstantFolder
 
             InstructionList ilist = mgen.getInstructionList();
             InstructionFinder ifinder = new InstructionFinder(ilist);
-            // Regex pattern to find using ifinder
-            //String pat = "";
-            //Stack stack = new Stack();
+            InstructionHandle[] handles = ilist.getInstructionHandles();
+            for (int i = 0; i < handles.length; i++) {
+                    System.out.println("===HANDLE=== " + handles[i]);
+            }
+            // Regex pattern to find instructions using ifinder: NEED TO DEFINE THE PATTERN!
+//            String pattern = "";
+//
+//            for(Iterator i = ifinder.search(pattern); i.hasNext(); ) {
+//                InstructionHandle[] match = (InstructionHandle[])i.next();
+//                //do something with the instruction that is found, like delete it:
+//                //il.delete(...);
+//            }
+
             System.out.println(original.getClassName() + ": Method "+ m + "/" + methods.length +
                     " : " + methods[m].getName() + " : " + ilist.getLength() + " instructions");
+
             for (int i = 0; i < ilist.getLength(); ++i) {
                 Instruction current = ilist.getInstructions()[i];
 
                 short op = current.getOpcode();
                 if (current instanceof IndexedInstruction) {
                     int index = ((IndexedInstruction) current).getIndex();
-//                    System.out.println("Index  " + index);
                     switch(op) {
                         //storing anything into hashmap of local variables //TODO: reference
                         case 0x3a:
@@ -88,8 +98,8 @@ public class ConstantFolder
                         case 0x39: localvars.put(index, stack.peek()); break; //TODO: pop? why?
                     }
                     if (op >= 0x12 && op <= 0x14) { //Push constant[#index] from constant pool
-                        System.out.println("Loading constant from pool");
                         stack.push(cp.getConstant(index));
+                        System.out.println("\t>>>Pushing constant onto the stack: " + cp.getConstant(index));
                     }
                     else if (op >= 0x15 && op <= 0x19){ //Load from local var[#index]
                         stack.push((Number)localvars.get(index));
@@ -105,36 +115,44 @@ public class ConstantFolder
 
                 }
 
-                System.out.println("\t" + current + "\t" + current.toString(cp) +  "\topcode " + op);
-
-                double vard1, vard2, resultd; float varf1, varf2, resultf; long varl1, varl2, resultl; int vari1, vari2, resulti;
+                System.out.println("\t" + current + "\t" + current.toString(cp));
 
                 switch(op) {
-                    case 0x09: stack.push(new Long(0)); break;
-                    case 0x0a: stack.push(new Long(1)); break;
                     case 0x57: stack.pop(); break;
                     case 0x58: pop2(stack); break;
                     case 0x01: stack.push(null); break;
-
-                    //adding two numbers
-                    case 0x63: vard1 = (double) stack.pop();
-                        vard2 = (double) stack.pop();
-                        resultd = vard1 + vard2; break;
-                    case 0x62: varf1 = (float) stack.pop();
-                        varf2 = (float) stack.pop();
-                        resultf = varf1 + varf2; break;
-                    case 0x61: varl1 = (long) stack.pop();
-                        varl2 = (long) stack.pop();
-                        resultl = varl1 + varl2; break;
-                    case 0x60: vari1 = (int) stack.pop();
-                        vari2 = (int) stack.pop();
-                        resulti = vari1 + vari2; break;
+                    case 0x59: stack.push(stack.peek()); break;
 
                     case 0x0e: stack.push(new Double(0.0)); break;
                     case 0x0f: stack.push(new Double(1.0)); break;
-                    case 0x59: stack.push(stack.peek()); break;
+                    case 0x09: stack.push(new Long(0)); break;
+                    case 0x0a: stack.push(new Long(1)); break;
 
-                    //BIPUSH
+                    //adding two numbers
+                    case 0x63: printStack(stack);stack.push((double)stack.pop() + (double)stack.pop()); break;
+                    case 0x62: stack.push((float)stack.pop() + (float)stack.pop()); break;
+                    case 0x61: stack.push((long)stack.pop() + (long)stack.pop()); break;
+                    case 0x60: stack.push((int)stack.pop() + (int)stack.pop()); break;
+
+                    //multiplying two numbers
+                    case 0x6b: stack.push((double)stack.pop() * (double)stack.pop()); break;
+                    case 0x6a: stack.push((float)stack.pop() * (float)stack.pop()); break;
+                    case 0x69: stack.push((long)stack.pop() * (long)stack.pop()); break;
+                    case 0x68: stack.push((int)stack.pop() * (int)stack.pop()); break;
+
+                    //subtracting two numbers
+                    case 0x67: stack.push(-(double)stack.pop() + (double)stack.pop()); break;
+                    case 0x66: stack.push(-(float)stack.pop() + (float)stack.pop()); break;
+                    case 0x65: stack.push(-(long)stack.pop() + (long)stack.pop()); break;
+                    case 0x64: stack.push(-(int)stack.pop() + (int)stack.pop()); break;
+
+                    //dividing two numbers
+                    case 0x6f: stack.push(1/(double)stack.pop() * (double)stack.pop()); break;
+                    case 0x6e: stack.push(1/(float)stack.pop() * (float)stack.pop()); break;
+                    case 0x6d: stack.push(1/(long)stack.pop() * (long)stack.pop()); break;
+                    case 0x6c: stack.push(1/(int)stack.pop() * (int)stack.pop()); break;
+
+                    //bipush and sipush
                     case 0x10:
                     case 0x11: stack.push(parseBiSipush(current.toString(cp)));
                         System.out.println("\t>>> Pushing value onto stack: " + parseBiSipush(current.toString(cp))); break;
@@ -184,11 +202,11 @@ public class ConstantFolder
                 }
                 //LOADING NUMBER (int, long, float, double) FROM LOCAL VARIABLES
                 else if (op == 0x26 || op == 0x22 || op == 0x1a || op == 0x1e) {
-                    stack.push((Number)localvars.get(0));
+                    stack.push(localvars.get(0));
                 }
                 else if (op == 0x27 || op == 0x23 || op == 0x1b || op == 0x1f) {
                     System.out.println("\t>>> Pushing value onto stack " +  localvars.get(1));
-                    stack.push((Number)localvars.get(1));
+                    stack.push(localvars.get(1));
                 }
                 else if (op == 0x28 || op == 0x24 || op == 0x1c || op == 0x20) {
                     stack.push((Number)localvars.get(2));
