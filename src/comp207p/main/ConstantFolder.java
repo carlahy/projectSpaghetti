@@ -71,12 +71,13 @@ public class ConstantFolder
 
                     switch(op) {
                         case 0x10: stack.push(index); break;
-                        case 0x3a: localvars.put(index, i); break; //store ref
-                        //storing anything into index of hashmap local variables
+                       
+                        //storing anything into hashmap of local variables
+                        case 0x3a:
+                        case 0x38:
                         case 0x36:
                         case 0x37:
-                        case 0x38:
-                        case 0x39:localvars.put(index, stack.peek());break; //TODO: pop ?
+                        case 0x39: localvars.put(index, stack.peek()); break; //TODO: pop? why?
                     }
                     if (op >= 0x12 && op <= 0x14) { //Push constant[#index] from constant pool
                         System.out.println("Loading constant from pool");
@@ -101,6 +102,12 @@ public class ConstantFolder
                     case 0x96: System.out.println("Adding 2 integers"); break;
                     case 0x01: stack.push(null); break;
 
+                    //adding two numbers
+                    case 0x63:
+                    case 0x62:
+                    case 0x61:
+                    case 0x60: pop2
+
                     case 0x0e: stack.push(new Double(0.0)); break;
                     case 0x0f: stack.push(new Double(1.0)); break;
                     case 0x59: stack.push(stack.peek()); break;
@@ -119,20 +126,35 @@ public class ConstantFolder
 //                        reference arrayref = stack.peek(); stack.pop();
 //                        stack.push(arrayref[index].reference); break;
 
+                    //storing anything into 0 of hashmap local variables
+                    case 0x4b: 
+                    case 0x47:
+                    case 0x43:
+                    case 0x3b: 
+                    case 0x3f: localvars.put(0, stack.peek()); stack.pop(); break;
 
+                    //storing anything into 1 of hashmap local variables
+                    case 0x4c: 
+                    case 0x48:
+                    case 0x44:
+                    case 0x3c: 
+                    case 0x40: localvars.put(1, stack.peek()); stack.pop(); break;
+
+                    //storing anything into 2 of hashmap local variables
+                    case 0x4d: 
+                    case 0x49:
+                    case 0x45:
+                    case 0x3d: 
+                    case 0x41: localvars.put(2, stack.peek()); stack.pop(); break;
+
+                    //storing anything into 3 of hashmap local variables
+                    case 0x4e: 
+                    case 0x4a:
+                    case 0x46:
+                    case 0x3e: 
+                    case 0x42: localvars.put(3, stack.peek()); stack.pop(); break;
                 }
-                if(op == 0x4b || op == 0x47 || op == 0x43 || op == 0x3b || op == 0x3f){ //store in l.v. 0
-                    localvars.put(0, stack.peek());
-                }
-                else if(op == 0x4c || op == 0x48 || op == 0x44 || op == 0x3c || op == 0x40){ //store in l.v. 1
-                    localvars.put(1, stack.peek());
-                }
-                else if(op == 0x4d || op == 0x49 || op == 0x45 || op == 0x3d || op == 0x41){ //store in l.v. 2
-                    localvars.put(2, stack.peek());
-                }
-                else if(op == 0x4e || op == 0x4a || op == 0x46 || op == 0x3e || op == 0x42){ //store in l.v. 3
-                    localvars.put(3, stack.peek());
-                }
+
                 else if (op >= 0x02 && op <= 0x08) { //Load int
                     System.out.println("Iconst found");
                     stack.push(op - 3);
