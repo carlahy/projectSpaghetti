@@ -30,14 +30,14 @@ public class ConstantFolder
 		}
 	}
 
-    private void pop2(Stack<Number> stack) {
+    private void pop2(Stack<Object> stack) {
         boolean twice = !(stack.peek() instanceof Long || stack.peek() instanceof Double);
         stack.pop();
         if (twice) {
             stack.pop();
         }
     }
-	
+
 	public void optimize()
 	{
 		ClassGen cgen = new ClassGen(original);
@@ -51,7 +51,8 @@ public class ConstantFolder
         Method[] methods = cgen.getMethods();
 
         for (int m = 0; m < methods.length; ++m) {
-            Stack<Number> stack = new Stack<Number>();
+            
+            Stack<Object> stack = new Stack<Object>();
             MethodGen mgen = new MethodGen(methods[m], original.getClassName(), cpgen);
 
             InstructionList ilist = mgen.getInstructionList();
@@ -70,15 +71,22 @@ public class ConstantFolder
 
                     switch(op) {
                         case 0x10: stack.push(index); break;
-                        case 0x3a: localvars.set(index, i); break;
-
+                        case 0x3a: localvars.put(index, i); break; //store ref
+                        //storing anything into index of hashmap local variables
+                        case 0x36:
+                        case 0x37:
+                        case 0x38:
+                        case 0x39:localvars.put(index, stack.peek());break; //TODO: pop ?
                     }
                     if (op >= 0x12 && op <= 0x14) { //Push constant[#index] from constant pool
                         System.out.println("Loading constant from pool");
                         stack.push(cp.getConstant(index));
                     }
                     else if (op >= 0x15 && op <= 0x19){ //Load from local var[#index]
-                        stack.push(localvars[index]);
+                        stack.push((Number)localvars.get(index));
+                    }
+                    else if (op >= 0x30 && op <= 0x35) { //Load __ from array[#index]
+    //                    stack.push();
                     }
 
                 }
@@ -97,6 +105,12 @@ public class ConstantFolder
                     case 0x0f: stack.push(new Double(1.0)); break;
                     case 0x59: stack.push(stack.peek()); break;
 
+                    //LOADING REFERENCE FROM LOCAL VARIABLES
+                    case 0x2a: stack.push(localvars.get(0));break;
+                    case 0x2b: stack.push(localvars.get(1));break;
+                    case 0x2c: stack.push(localvars.get(2));break;
+                    case 0x2d: stack.push(localvars.get(3));break;
+
       //  case 0x11: stack.push(); break; //push a short on the stack
 
                     //REFERENCES
@@ -105,19 +119,6 @@ public class ConstantFolder
 //                        reference arrayref = stack.peek(); stack.pop();
 //                        stack.push(arrayref[index].reference); break;
 
-
-                }
-                //LOADING INT
-
-                    case 0x10: stack.push(); break; //bipush: push byte as an int value
-                    case 0x11: stack.push(); break; //push a short on the stack
-
-                    //storing anything into index of hashmap local variables
-                    case 0x3a:
-                    case 0x38:
-                    case 0x36:
-                    case 0x37:
-                    case 0x39: localvars.put(index, stack.peek()); break;
 
                 }
                 if(op == 0x4b || op == 0x47 || op == 0x43 || op == 0x3b || op == 0x3f){ //store in l.v. 0
@@ -136,24 +137,21 @@ public class ConstantFolder
                     System.out.println("Iconst found");
                     stack.push(op - 3);
                 }
-                //LOADING FROM LOCAL VARIABLES
-                else if (op == 0x2a || op == 0x26 || op == 0x22 || op == 0x1a || op == 0x1e) {
-                    stack.push(localvars[0]);
+                //LOADING NUMBER (int, long, float, double) FROM LOCAL VARIABLES
+                else if (op == 0x26 || op == 0x22 || op == 0x1a || op == 0x1e) {
+                    stack.push((Number)localvars.get(0));
                 }
-                else if (op == 0x2b || op == 0x27 || op == 0x23 || op == 0x1b || op == 0x1f) {
-                    stack.push(localvars[1]);
+                else if (op == 0x27 || op == 0x23 || op == 0x1b || op == 0x1f) {
+                    stack.push((Number)localvars.get(1));
                 }
-                else if (op == 0x2c || op == 0x28 || op == 0x24 || op == 0x1c || op == 0x20) {
-                    stack.push(localvars[2]);
+                else if (op == 0x28 || op == 0x24 || op == 0x1c || op == 0x20) {
+                    stack.push((Number)localvars.get(2));
                 }
-                else if (op == 0x2d || op == 0x29 || op == 0x25 || op == 0x1d || op == 0x21) {
-                    stack.push(localvars[3]);
+                else if (op == 0x29 || op == 0x25 || op == 0x1d || op == 0x21) {
+                    stack.push((Number)localvars.get(3));
                 }
 
 
-                else if (op >= 0x30 && op <= 0x35) { //Load __ from array[#index]
-//                    stack.push();
-                }
 
             }
             System.out.println("Stack");
