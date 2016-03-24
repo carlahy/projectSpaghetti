@@ -48,6 +48,11 @@ public class ConstantFolder
         }
     }
 
+    private void peekpop2(Stack<Object> stack){
+        stack.pop();
+        stack.pop();
+    }
+
 	public void optimize()
 	{
 		ClassGen cgen = new ClassGen(original);
@@ -110,11 +115,19 @@ public class ConstantFolder
                 double vard1, vard2, resultd; float varf1, varf2, resultf; long varl1, varl2, resultl; int vari1, vari2, resulti;
 
                 switch(op) {
+                    //pushing longs on stack
                     case 0x09: stack.push(new Long(0)); break;
                     case 0x0a: stack.push(new Long(1)); break;
+
+                    //popping values on stack
                     case 0x57: stack.pop(); break;
                     case 0x58: pop2(stack); break;
                     case 0x01: stack.push(null); break;
+
+                    //push doubles on the stack
+                    case 0x0e: stack.push(new Double(0.0)); break;
+                    case 0x0f: stack.push(new Double(1.0)); break;
+                    case 0x59: stack.push(stack.peek()); break;
 
                     //adding two numbers
                     case 0x63: vard1 = (double) stack.pop();
@@ -130,9 +143,22 @@ public class ConstantFolder
                         vari2 = (int) stack.pop();
                         resulti = vari1 + vari2; break;
 
-                    case 0x0e: stack.push(new Double(0.0)); break;
-                    case 0x0f: stack.push(new Double(1.0)); break;
-                    case 0x59: stack.push(stack.peek()); break;
+
+                    //multiplying two numbers
+                    case 0x6b:
+                    case 0x6a:
+                    case 0x68:
+                    case 0x69: (Number) var1 = (Number) stack.pop();
+                               (Number) var2 = (Number) stack.pop();
+                               (Number) result = var1 * var2;
+
+                    //subtracting two numbers
+                    case 0x6b:
+                    case 0x6a:
+                    case 0x68:
+                    case 0x69: (Number) var1 = (Number) stack.pop();
+                               (Number) var2 = (Number) stack.pop();
+                               (Number) result = var2 - var1;
 
                     //BIPUSH
                     case 0x10:
