@@ -4,8 +4,9 @@ public class DynamicVariableFolding {
     public int methodOne() {
         int a = 42;
         int b = (a + 764) * 3;
-        a = b - 67;
+            a = b - 67;
         return b + 1234 - a;
+        //b is calculated twice (in a=b-67 and in return)
     }
 
     public boolean methodTwo() {
@@ -14,6 +15,7 @@ public class DynamicVariableFolding {
         System.out.println(x < y);
         y = 0;
         return x > y;
+        //The essential is what it returns, so maybe just remove the first y? Like, if it's not included in the return statement remove it? And also the print statement? That can be done at compile time.
     }
 
     public int methodThree() {
@@ -22,6 +24,8 @@ public class DynamicVariableFolding {
         i = j + 4;
         j = i + 5;
         return i * j;
+        //i = 0 + 3 + 4 is calculated twice, once for i and once for i + 5
+        //can put whole statement into one and return one load??
     }
     
     public int methodFour(){
@@ -34,5 +38,9 @@ public class DynamicVariableFolding {
         a = 4;
         b = a + 2;
         return a * b;
+        //fold b.
+        //multiply an int with double
+        //b-a is the same as a, so no need of b - remove it.
+        //will return just one load --> a*b
     }
 }

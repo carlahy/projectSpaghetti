@@ -53,6 +53,47 @@ public class ConstantFolder
         stack.pop();
     }
 
+    private void removeInstruction(InstructionFinder ifinder, InstructionList ilist, String pattern, MethodGen mg){
+        for(Iterator i = ifinder.search(pattern); i.hasNext(); ) {
+            InstructionHandle[] match = (InstructionHandle[])i.next();
+            InstructionHandle   first = match[0];
+            InstructionHandle   last  =  match[match.length - 1];
+
+            if((next = last.getNext()) == null)
+            break;
+
+            count += match.length;
+            try 
+            {
+                il.delete(first, last);
+            } 
+            catch(TargetLostException e) 
+            {
+                InstructionHandle[] targets = e.getTargets();
+                for(int i=0; i < targets.length; i++) {
+                    InstructionTargeter[] targeters = targets[i].getTargeters();
+                  
+                    for(int j=0; j < targeters.length; j++)
+                    targeters[j].updateTarget(targets[i], next);
+                }
+            }
+        }
+
+        Method m = null;
+        
+        if(count > 0) {
+            System.out.println("Removed " + count + "instructions from method " +
+            mg.getName());
+            m = mg.getMethod();
+        }
+        il.dispose(); 
+    }
+
+
+    private void addInstruction(InstructionFinder ifinder, InstructionList ilist, String pattern, MethodGen mg){
+        //change this method to add an instruction after the ones who are deleted
+    }
+
 	public void optimize()
 	{
 		ClassGen cgen = new ClassGen(original);
@@ -65,6 +106,31 @@ public class ConstantFolder
 
         Method[] methods = cgen.getMethods();
 
+            /*
+            Instructions we want to optimize:
+            - add, sub, mult, div with constant folding
+            - common subexpresiions
+            - algebraic identities (x+0 || x*1)
+            - dead code elimination (never executed or have effect)
+            - strength reduction
+                - addition and shifting cheaper than multiplication (5*x -> x << 2 +x, 6*x -> x<<2 + x<<1 etc)
+                - mult instead of exponentiation (5*x-> z = y * y * x where y = x*x)
+                - inside loops (see p.59 in slide 4)
+            - inlining
+                - split functions into smaller functions
+            - copy propagation
+            - loops
+                - unrolling? no
+                - fusion/fission (split/combine loops with same index range)
+                - code motion (move invariant code outside loop, p.66 slide 4)
+                - tiling
+                - inversion
+                - interchange
+                - unswitching
+
+            Should we make an AST to traverse down to find common subexpressions?
+            */
+
         for (int m = 0; m < methods.length; ++m) {
 
             Stack<Object> stack = new Stack<Object>();
@@ -73,17 +139,15 @@ public class ConstantFolder
             InstructionList ilist = mgen.getInstructionList();
             InstructionFinder ifinder = new InstructionFinder(ilist);
             InstructionHandle[] handles = ilist.getInstructionHandles();
+
             for (int i = 0; i < handles.length; i++) {
                     System.out.println("===HANDLE=== " + handles[i]);
             }
-            // Regex pattern to find instructions using ifinder: NEED TO DEFINE THE PATTERN!
-//            String pattern = "";
-//
-//            for(Iterator i = ifinder.search(pattern); i.hasNext(); ) {
-//                InstructionHandle[] match = (InstructionHandle[])i.next();
-//                //do something with the instruction that is found, like delete it:
-//                //il.delete(...);
-//            }
+            //Regex pattern to find instructions using ifinder: NEED TO DEFINE THE PATTERN!
+            String nop = "NOP+";
+            removeInstruction(ifinder, ilist, nop, mgen);
+
+            Stack stack = new Stack();
 
             System.out.println(original.getClassName() + ": Method "+ m + "/" + methods.length +
                     " : " + methods[m].getName() + " : " + ilist.getLength() + " instructions");
