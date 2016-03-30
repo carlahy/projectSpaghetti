@@ -123,7 +123,7 @@
       </batchtest>
     </junit>
   </target>
-  
+
   <!-- Invoke constant folding optimisation -->
   <target name="optimise" depends="generate" description="Perform constant folding">
     <echo message="Running constant folding optimisation..."/>
@@ -133,8 +133,8 @@
       <arg line="-in ${classes.dir} -out ${optimised.dir}"/>
     </java>
   </target>
-  
-  
+
+
   <!-- clean up everything -->
   <target name="clean" description="cleanup">
     <delete dir="${build.dir}"/>

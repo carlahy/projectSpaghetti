@@ -40,6 +40,11 @@ public class ConstantFolder
         return result_int;
     }
 
+    public String parseStuff(String input) {
+        String[] result = input.split(" ");
+        return result[result.length-1];
+    }
+
     private void pop2(Stack<Object> stack) {
         boolean twice = !(stack.peek() instanceof Long || stack.peek() instanceof Double);
         stack.pop();
@@ -53,58 +58,143 @@ public class ConstantFolder
         stack.pop();
     }
 
-	public void optimize()
+    //method gen - method - local variables : localvariabletable
+
+    public Method removeArithOp(InstructionList ilist, MethodGen mgen, Stack stack) {//InstructionList ilist, MethodGen mgen, Stack stack) {
+        int count = 0;
+        for(InstructionHandle handle : ilist.getInstructionHandles()) {
+            if (handle.getInstruction() instanceof DADD
+                    || handle.getInstruction() instanceof DMUL
+                    || handle.getInstruction() instanceof DDIV
+                    || handle.getInstruction() instanceof DSUB
+                    || handle.getInstruction() instanceof FADD
+                    || handle.getInstruction() instanceof FMUL
+                    || handle.getInstruction() instanceof FDIV
+                    || handle.getInstruction() instanceof FSUB
+                    || handle.getInstruction() instanceof IADD
+                    || handle.getInstruction() instanceof IMUL
+                    || handle.getInstruction() instanceof IDIV
+                    || handle.getInstruction() instanceof ISUB
+                    || handle.getInstruction() instanceof LADD
+                    || handle.getInstruction() instanceof LMUL
+                    || handle.getInstruction() instanceof LDIV
+                    || handle.getInstruction() instanceof LSUB) {
+                try {
+                    ilist.delete(handle);
+                    count++;
+                } catch (TargetLostException e) {
+                    System.out.println("Couldn't delete arithmetic op instruction");
+                    e.printStackTrace();
+                }
+            }
+        }
+        System.out.println("Removed " + count + " arithmetic op instructions from method " + mgen.getMethod().getName());
+        return mgen.getMethod();
+    }
+
+    public Method removeStore(InstructionList ilist, MethodGen mgen) {
+        int count = 0;
+        for(InstructionHandle handle : ilist.getInstructionHandles()) {
+            if (handle.getInstruction() instanceof ISTORE) {
+                try {
+                    ilist.delete(handle);
+                    count++;
+                } catch (TargetLostException e) {
+                    System.out.println("Couldn't delete storing instruction");
+                    e.printStackTrace();
+                }
+            }
+        }
+        System.out.println("Removed " + count + " storing instructions from method " + mgen.getMethod().getName());
+        return mgen.getMethod();
+    }
+
+    public Method removeLoad(InstructionList ilist, MethodGen mgen) {
+        int count = 0;
+        for(InstructionHandle handle : ilist.getInstructionHandles()) {
+            if (handle.getInstruction() instanceof ILOAD) {
+                try {
+                    ilist.delete(handle);
+                    count++;
+                } catch (TargetLostException e) {
+                    System.out.println("Couldn't delete loading instruction");
+                    e.printStackTrace();
+                }
+            }
+        }
+        System.out.println("Removed " + count + " loading instructions from method " + mgen.getMethod().getName());
+        return mgen.getMethod();
+    }
+
+    public int ldcToLocal(MethodGen mgen, ConstantPoolGen cpgen, String name, Type type) {
+        LocalVariableGen lgen = mgen.addLocalVariable(name, type, null, null);
+        LocalVariableTable lvtable = mgen.getLocalVariableTable(cpgen);
+        int index = lgen.getIndex();
+//        System.out.println("==NEW LOCAL VAR== " +  + "     "  + lvtable.getLocalVariable(index).getName());
+        //delete ldc
+
+
+        return index;
+    }
+
+
+
+    public void addLocalVariable(MethodGen mgen, ConstantPoolGen cpgen, String name, Type type) {
+        LocalVariableGen lgen = mgen.addLocalVariable(name, type, null, null);
+        int index = lgen.getIndex();
+        LocalVariableTable lvtable = mgen.getLocalVariableTable(cpgen);
+        System.out.println("==LOCAL VAR== " + index + "    " + lvtable.getLocalVariable(index).getName());
+
+        int len = lvtable.getTableLength();
+        for (int i=0; i<=len; i++) {
+        }
+        //return lgen;
+    }
+
+    public void optimize()
 	{
 		ClassGen cgen = new ClassGen(original);
 		ConstantPoolGen cpgen = cgen.getConstantPool();
-
-		// Implement your optimization here
-		ConstantPool cp = cpgen.getConstantPool(); //get current constant pool
-		Constant[] constants = cp.getConstantPool(); //get constants in the pool
-		HashMap localvars = new HashMap();
-
+		ConstantPool cp = cpgen.getConstantPool();
+		Constant[] constants = cp.getConstantPool();
         Method[] methods = cgen.getMethods();
+
+		HashMap localvars = new HashMap();
 
         for (int m = 0; m < methods.length; ++m) {
 
             Stack<Object> stack = new Stack<Object>();
             MethodGen mgen = new MethodGen(methods[m], original.getClassName(), cpgen);
-
             InstructionList ilist = mgen.getInstructionList();
-            InstructionFinder ifinder = new InstructionFinder(ilist);
-            InstructionHandle[] handles = ilist.getInstructionHandles();
-            for (int i = 0; i < handles.length; i++) {
-                    System.out.println("===HANDLE=== " + handles[i]);
-            }
-            // Regex pattern to find instructions using ifinder: NEED TO DEFINE THE PATTERN!
-//            String pattern = "";
-//
-//            for(Iterator i = ifinder.search(pattern); i.hasNext(); ) {
-//                InstructionHandle[] match = (InstructionHandle[])i.next();
-//                //do something with the instruction that is found, like delete it:
-//                //il.delete(...);
-//            }
 
-            System.out.println(original.getClassName() + ": Method "+ m + "/" + methods.length +
+            System.out.println(original.getClassName() + ": Method " + m + "/" + methods.length +
                     " : " + methods[m].getName() + " : " + ilist.getLength() + " instructions");
 
+            LocalVariableGen lgen;
+
+            //organise this code for what we need to do...
             for (int i = 0; i < ilist.getLength(); ++i) {
                 Instruction current = ilist.getInstructions()[i];
+                System.out.println("\t" + current.toString(cp));
 
                 short op = current.getOpcode();
                 if (current instanceof IndexedInstruction) {
                     int index = ((IndexedInstruction) current).getIndex();
                     switch(op) {
-                        //storing anything into hashmap of local variables //TODO: reference
+                        //storing anything into hashmap of local variables
                         case 0x3a:
                         case 0x38:
                         case 0x36:
                         case 0x37:
-                        case 0x39: localvars.put(index, stack.peek()); break; //TODO: pop? why?
+                        case 0x39: localvars.put(index, stack.peek()); break;
                     }
                     if (op >= 0x12 && op <= 0x14) { //Push constant[#index] from constant pool
-                        stack.push(cp.getConstant(index));
-                        System.out.println("\t>>>Pushing constant onto the stack: " + cp.getConstant(index));
+                        String constant = cp.getConstant(index);
+
+                        String result = parseStuff(constant, current.toString(cp));
+                        double dresult = Double.parseDouble(result);
+                        stack.push(dresult);
+                        System.out.println("\t>>>Pushing constant onto the stack: " + dresult);//cp.getConstant(index));
                     }
                     else if (op >= 0x15 && op <= 0x19){ //Load from local var[#index]
                         stack.push((Number)localvars.get(index));
@@ -117,10 +207,7 @@ public class ConstantFolder
 //                        int index = stack.peek(); stack.pop();
 //                        reference arrayref = stack.peek(); stack.pop();
 //                        stack.push(arrayref[index].reference); break;
-
                 }
-
-                System.out.println("\t" + current + "\t" + current.toString(cp));
 
                 switch(op) {
                     case 0x57: stack.pop(); break;
@@ -128,13 +215,18 @@ public class ConstantFolder
                     case 0x01: stack.push(null); break;
                     case 0x59: stack.push(stack.peek()); break;
 
+//                    case 0x87: System.out.println("VARi == " + stack.peek());
+//                        double var = (double)stack.peek();
+//                        System.out.println("VAR == " + var);
+//                        stack.pop(); stack.push(var); break;
+
                     case 0x0e: stack.push(new Double(0.0)); break;
                     case 0x0f: stack.push(new Double(1.0)); break;
                     case 0x09: stack.push(new Long(0)); break;
                     case 0x0a: stack.push(new Long(1)); break;
 
                     //adding two numbers
-                    case 0x63: printStack(stack);stack.push((double)stack.pop() + (double)stack.pop()); break;
+                    case 0x63: printStack(stack); stack.push((double)stack.pop() + (double)stack.pop()); System.out.println("Problemo");break;
                     case 0x62: stack.push((float)stack.pop() + (float)stack.pop()); break;
                     case 0x61: stack.push((long)stack.pop() + (long)stack.pop()); break;
                     case 0x60: stack.push((int)stack.pop() + (int)stack.pop()); break;
@@ -160,7 +252,8 @@ public class ConstantFolder
                     //bipush and sipush
                     case 0x10:
                     case 0x11: stack.push(parseBiSipush(current.toString(cp)));
-                        System.out.println("\t>>> Pushing value onto stack: " + parseBiSipush(current.toString(cp))); break;
+//                        System.out.println("\t>>> Pushing value onto stack: " + parseBiSipush(current.toString(cp)));
+                        break;
 
                     //LOADING REFERENCE FROM LOCAL VARIABLES
                     case 0x2a: stack.push(localvars.get(0));break;
@@ -173,17 +266,20 @@ public class ConstantFolder
                     case 0x47:
                     case 0x43:
                     case 0x3b: 
-                    case 0x3f: localvars.put(0, stack.peek());
-                        System.out.println("\t>>> Popping value off the stack " + stack.peek());
+                    case 0x3f:
+                        localvars.put(0, stack.peek());
+//                        System.out.println("\t>>> Popping value off the stack " + stack.peek());
                         stack.pop(); break;
 
                     //storing anything into 1 of hashmap local variables
                     case 0x4c: 
                     case 0x48:
                     case 0x44:
-                    case 0x3c: 
-                    case 0x40: localvars.put(1, stack.peek());
-                        System.out.println("\t>>> Popping value off the stack " + stack.peek());
+                    case 0x3c:
+                    case 0x40:
+                       // addLocalVariable(mgen, cpgen, stack.peek().toString(), Type.INT);
+                        localvars.put(1, stack.peek());
+//                        System.out.println("\t>>> Popping value off the stack " + stack.peek());
                         stack.pop(); break;
 
                     //storing anything into 2 of hashmap local variables
@@ -199,18 +295,24 @@ public class ConstantFolder
                     case 0x46:
                     case 0x3e: 
                     case 0x42: localvars.put(3, stack.peek()); stack.pop(); break;
+
+                    case 0x87: int in = (int)stack.pop();
+                        double out = (double) in;
+                        System.out.println("i2d in out : " + in + "  " + out);
+                        stack.push(out);
                 }
 
                 if (op >= 0x02 && op <= 0x08) { //Load int
-                    System.out.println("\t>>> Iconst found");
-                    stack.push(op - 3);
+//                    System.out.println("\t>>> Iconst found");
+                    stack.push((int)op - 3);
                 }
                 //LOADING NUMBER (int, long, float, double) FROM LOCAL VARIABLES
                 else if (op == 0x26 || op == 0x22 || op == 0x1a || op == 0x1e) {
                     stack.push(localvars.get(0));
+                    //LocalVariable.add
                 }
                 else if (op == 0x27 || op == 0x23 || op == 0x1b || op == 0x1f) {
-                    System.out.println("\t>>> Pushing value onto stack " +  localvars.get(1));
+//                    System.out.println("\t>>> Pushing value onto stack " +  localvars.get(1));
                     stack.push(localvars.get(1));
                 }
                 else if (op == 0x28 || op == 0x24 || op == 0x1c || op == 0x20) {
@@ -221,7 +323,28 @@ public class ConstantFolder
                 }
             }
 
-        printStack(stack);
+//            Method stripped = removeArithOp(ilist, mgen, stack);
+//            if (stripped != null) { //if instructions removed
+//                methods[m] = stripped; //replace method code with stripped method code
+//            }
+//
+//            stripped = removeStore(ilist, mgen);
+//            if (stripped != null) {
+//                methods[m] = stripped;
+//            }
+//
+//            stripped = removeLoad(ilist, mgen);
+//            if (stripped != null) {
+//                methods[m] = stripped;
+//            }
+//
+//            System.out.println("RESULT =");
+//            for (int i = 0; i < ilist.getLength(); ++i) {
+//                Instruction current = ilist.getInstructions()[i];
+//                System.out.println("\t" + current.toString(cp));
+//            }
+
+            printStack(stack);
         }
 
 
