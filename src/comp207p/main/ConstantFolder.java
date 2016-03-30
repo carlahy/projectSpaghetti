@@ -130,6 +130,33 @@ public class ConstantFolder
         LocalVariableGen lgen = mgen.addLocalVariable(name, type, null, null);
         LocalVariableTable lvtable = mgen.getLocalVariableTable(cpgen);
         int index = lgen.getIndex();
+        System.out.println()
+
+        Constant constant = cp.getConstant(index);
+        String cpvalue = (String)((ConstantClass)constant).getConstantValue(cp);
+
+        // ConstantFieldref constantFieldref;
+        // ConstantNameAndType constantNameAndType;
+        // ConstantUtf8 constantUtf8;
+        // ConstantFieldref fieldName;
+        // int nameAndTypeIndex;
+        // ConstantNameAndType nameAndType;
+
+        // constantFieldref = (ConstantFieldref) constantPool.getConstant(index);
+
+        // constantNameAndType = (ConstantNameAndType) constantPool.getConstant(constantFieldref.getNameAndTypeIndex());
+
+        // constantUtf8 = (ConstantUtf8) constantPool.getConstant(constantNameAndType.getNameIndex());
+        
+        // String targetClass = ((ConstantUtf8) constantPool.getConstant(((ConstantClass) constantPool.getConstant(constantFieldref.getClassIndex())).getNameIndex())).getBytes();
+
+        // print.println("                               operand_stack.push(Class_forName('"
+        //               + targetClass
+        //               + "').static_fields['"
+        //               + constantUtf8.getBytes()
+        //               + "'])");
+
+        //     toConvertClasses.add(targetClass);
 //        System.out.println("==NEW LOCAL VAR== " +  + "     "  + lvtable.getLocalVariable(index).getName());
         //delete ldc
 
@@ -157,8 +184,8 @@ public class ConstantFolder
 		ConstantPoolGen cpgen = cgen.getConstantPool();
 		ConstantPool cp = cpgen.getConstantPool();
 		Constant[] constants = cp.getConstantPool();
-        Method[] methods = cgen.getMethods();
 
+        Method[] methods = cgen.getMethods();
 		HashMap localvars = new HashMap();
         Method[] methods = cgen.getMethods();
 
