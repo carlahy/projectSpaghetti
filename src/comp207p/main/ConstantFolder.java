@@ -160,6 +160,32 @@ public class ConstantFolder
         Method[] methods = cgen.getMethods();
 
 		HashMap localvars = new HashMap();
+        Method[] methods = cgen.getMethods();
+
+            /*
+            Instructions we want to optimize:
+            - add, sub, mult, div with constant folding
+            - common subexpresiions
+            - algebraic identities (x+0 || x*1)
+            - dead code elimination (never executed or have effect)
+            - strength reduction
+                - addition and shifting cheaper than multiplication (5*x -> x << 2 +x, 6*x -> x<<2 + x<<1 etc)
+                - mult instead of exponentiation (5*x-> z = y * y * x where y = x*x)
+                - inside loops (see p.59 in slide 4)
+            - inlining
+                - split functions into smaller functions
+            - copy propagation
+            - loops
+                - unrolling? no
+                - fusion/fission (split/combine loops with same index range)
+                - code motion (move invariant code outside loop, p.66 slide 4)
+                - tiling
+                - inversion
+                - interchange
+                - unswitching
+
+            Should we make an AST to traverse down to find common subexpressions?
+            */
 
         for (int m = 0; m < methods.length; ++m) {
 
