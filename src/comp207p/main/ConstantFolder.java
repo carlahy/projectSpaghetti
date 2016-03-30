@@ -160,7 +160,6 @@ public class ConstantFolder
         Method[] methods = cgen.getMethods();
 
 		HashMap localvars = new HashMap();
-        Method[] methods = cgen.getMethods();
 
             /*
             Instructions we want to optimize:
@@ -215,9 +214,8 @@ public class ConstantFolder
                         case 0x39: localvars.put(index, stack.peek()); break;
                     }
                     if (op >= 0x12 && op <= 0x14) { //Push constant[#index] from constant pool
-                        String constant = cp.getConstant(index);
 
-                        String result = parseStuff(constant, current.toString(cp));
+                        String result = parseStuff(current.toString(cp));
                         double dresult = Double.parseDouble(result);
                         stack.push(dresult);
                         System.out.println("\t>>>Pushing constant onto the stack: " + dresult);//cp.getConstant(index));
