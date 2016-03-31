@@ -92,6 +92,25 @@ public class ConstantFolder
         return mgen.getMethod();
     }
 
+    public Method removeLdc(InstructionList ilist, MethodGen mgen) {
+        int count = 0;
+        for(InstructionHandle handle : ilist.getInstructionHandles()) {
+            if (handle.getInstruction() instanceof LDC
+                    || handle.getInstruction() instanceof LDC_W
+                    || handle.getInstruction() instanceof LDC2_W) {
+                try {
+                    ilist.delete(handle);
+                    count++;
+                } catch (TargetLostException e) {
+                    System.out.println("Couldn't delete ldc instruction " + handle.getInstruction());
+//                    e.printStackTrace();
+                }
+            }
+        }
+        System.out.println("Removed " + count + " ldc instructions from method " + mgen.getMethod().getName());
+        return mgen.getMethod();
+    }
+
     public Method removeStore(InstructionList ilist, MethodGen mgen) {
         int count = 0;
         for(InstructionHandle handle : ilist.getInstructionHandles()) {
@@ -126,45 +145,18 @@ public class ConstantFolder
         return mgen.getMethod();
     }
 
-    public int ldcToLocal(MethodGen mgen, ConstantPoolGen cpgen, String name, Type type) {
-        LocalVariableGen lgen = mgen.addLocalVariable(name, type, null, null);
-        LocalVariableTable lvtable = mgen.getLocalVariableTable(cpgen);
-        int index = lgen.getIndex();
-        System.out.println()
-
+    public void ldcHandler(MethodGen mgen, ConstantPoolGen cpgen, ConstantPool cp, int index, Stack stack){
         Constant constant = cp.getConstant(index);
-        String cpvalue = (String)((ConstantClass)constant).getConstantValue(cp);
-
-        // ConstantFieldref constantFieldref;
-        // ConstantNameAndType constantNameAndType;
-        // ConstantUtf8 constantUtf8;
-        // ConstantFieldref fieldName;
-        // int nameAndTypeIndex;
-        // ConstantNameAndType nameAndType;
-
-        // constantFieldref = (ConstantFieldref) constantPool.getConstant(index);
-
-        // constantNameAndType = (ConstantNameAndType) constantPool.getConstant(constantFieldref.getNameAndTypeIndex());
-
-        // constantUtf8 = (ConstantUtf8) constantPool.getConstant(constantNameAndType.getNameIndex());
-        
-        // String targetClass = ((ConstantUtf8) constantPool.getConstant(((ConstantClass) constantPool.getConstant(constantFieldref.getClassIndex())).getNameIndex())).getBytes();
-
-        // print.println("                               operand_stack.push(Class_forName('"
-        //               + targetClass
-        //               + "').static_fields['"
-        //               + constantUtf8.getBytes()
-        //               + "'])");
-
-        //     toConvertClasses.add(targetClass);
-//        System.out.println("==NEW LOCAL VAR== " +  + "     "  + lvtable.getLocalVariable(index).getName());
-        //delete ldc
-
-
-        return index;
+        if (constant instanceof ConstantDouble) {
+            stack.push((Double)((ConstantDouble)constant).getConstantValue(cp));
+        } else if (constant instanceof ConstantLong) {
+            stack.push((Long)((ConstantLong)constant).getConstantValue(cp));
+        } else if (constant instanceof ConstantFloat) {
+            stack.push((Float)((ConstantFloat)constant).getConstantValue(cp));
+        } else if (constant instanceof ConstantInteger) {
+            stack.push((Integer) ((ConstantInteger) constant).getConstantValue(cp));
+        }
     }
-
-
 
     public void addLocalVariable(MethodGen mgen, ConstantPoolGen cpgen, String name, Type type) {
         LocalVariableGen lgen = mgen.addLocalVariable(name, type, null, null);
@@ -215,6 +207,7 @@ public class ConstantFolder
 
         for (int m = 0; m < methods.length; ++m) {
 
+
             Stack<Object> stack = new Stack<Object>();
             MethodGen mgen = new MethodGen(methods[m], original.getClassName(), cpgen);
             InstructionList ilist = mgen.getInstructionList();
@@ -241,11 +234,8 @@ public class ConstantFolder
                         case 0x39: localvars.put(index, stack.peek()); break;
                     }
                     if (op >= 0x12 && op <= 0x14) { //Push constant[#index] from constant pool
-
-                        String result = parseStuff(current.toString(cp));
-                        double dresult = Double.parseDouble(result);
-                        stack.push(dresult);
-                        System.out.println("\t>>>Pushing constant onto the stack: " + dresult);//cp.getConstant(index));
+                        ldcHandler(mgen, cpgen, cp, index, stack);
+                        System.out.println("\t>>>Top of stack: " + stack.peek());//cp.getConstant(index));
                     }
                     else if (op >= 0x15 && op <= 0x19){ //Load from local var[#index]
                         stack.push((Number)localvars.get(index));
@@ -349,8 +339,11 @@ public class ConstantFolder
 
                     case 0x87: int in = (int)stack.pop();
                         double out = (double) in;
-                        System.out.println("i2d in out : " + in + "  " + out);
-                        stack.push(out);
+                        System.out.println("\ti2d in out : " + in + "  " + out);
+                        stack.push(out); break;
+
+                    case 0xac: int returnvalue = (int)stack.peek();
+                        System.out.println("==RETURN VALUE== " + stack.peek() );
                 }
 
                 if (op >= 0x02 && op <= 0x08) { //Load int
@@ -374,37 +367,33 @@ public class ConstantFolder
                 }
             }
 
-//            Method stripped = removeArithOp(ilist, mgen, stack);
-//            if (stripped != null) { //if instructions removed
-//                methods[m] = stripped; //replace method code with stripped method code
-//            }
-//
-//            stripped = removeStore(ilist, mgen);
-//            if (stripped != null) {
-//                methods[m] = stripped;
-//            }
-//
-//            stripped = removeLoad(ilist, mgen);
-//            if (stripped != null) {
-//                methods[m] = stripped;
-//            }
-//
-//            System.out.println("RESULT =");
-//            for (int i = 0; i < ilist.getLength(); ++i) {
-//                Instruction current = ilist.getInstructions()[i];
-//                System.out.println("\t" + current.toString(cp));
-//            }
+            //REMOVE INSTRUCTIONS
+            Method optimised = removeArithOp(ilist, mgen, stack);
+            if (optimised != null) {
+                methods[m] = optimised;
+            }
+            optimised = removeStore(ilist, mgen);
+            if (optimised != null) {
+                methods[m] = optimised;
+            }
+            optimised = removeLoad(ilist, mgen);
 
+            if (optimised != null) {
+                methods[m] = optimised;
+            }
+            optimised = removeLdc(ilist, mgen);
+            if (optimised != null) {
+                methods[m] = optimised;
+            }
+
+            System.out.println("RESULT =");
+            for (int i = 0; i < ilist.getLength(); ++i) {
+                Instruction current = ilist.getInstructions()[i];
+                System.out.println("\t" + current.toString(cp));
+            }
             printStack(stack);
         }
 
-
-		for(int i=0; i<constants.length; i++) {
-			if (constants[i] instanceof ConstantString) {
-				ConstantString cs = (ConstantString) constants[i];
-                cp.setConstant(cs.getStringIndex(), new ConstantUtf8("HOT DOG"));
-			}
-		}
 		this.optimized = gen.getJavaClass();
 	}
 
