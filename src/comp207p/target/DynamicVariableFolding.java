@@ -3,9 +3,9 @@ package comp207p.target;
 public class DynamicVariableFolding {
     public int methodOne() {
         int a = 42;
-        int b = (a + 764) * 3;
-            a = b - 67;
-        return b + 1234 - a;
+        int b = (a + 764) * 3; //2418
+            a = b - 67;//2351
+        return b + 1234 - a;//1301
         //b is calculated twice (in a=b-67 and in return)
     }
 

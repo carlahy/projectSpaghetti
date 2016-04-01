@@ -27,7 +27,7 @@ public class ConstantVariableFolding
     public boolean methodFour(){
         long x = 4835783423L;
         long y = 400000;
-        long z = x + y;
+//        long z = x + y;
         return x > y;
         //can remove z --> unused
     }
