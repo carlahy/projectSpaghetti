@@ -53,7 +53,7 @@ public class ConstantFolder
         }
     }
 
-    public Method removeArithOp(InstructionList ilist, int i, MethodGen mgen, ConstantPoolGen cpgen, Stack stack) {//InstructionList ilist, MethodGen mgen, Stack stack) {
+    public Method removeArithOp(InstructionList ilist, int i, MethodGen mgen, ConstantPoolGen cpgen, Stack stack) {
         int count = 0;
         InstructionHandle handle = ilist.findHandle(i);
             if (handle.getInstruction() instanceof DADD
@@ -94,15 +94,6 @@ public class ConstantFolder
                     ilist.append(handle, new PUSH(cpgen, constant));
                     ilist.delete(handle.getPrev().getPrev(), handle);
                     count++;
-//                    System.out.println("=== RESULT ===");
-//
-//                    for (int j = 0; j < ilist.getLength(); ++j) {
-//                        Instruction current = ilist.getInstructions()[j];
-//                        int[] positions = ilist.getInstructionPositions();
-//                        System.out.println("\t"+ positions[j] + ": " + current.toString(cpgen.getConstantPool()));
-//                    }
-//                    System.out.println("\n\n\n");
-
                 } catch (TargetLostException e) {
                     System.out.println("Couldn't delete arithmetic op instruction");
                     e.printStackTrace();
@@ -122,6 +113,34 @@ public class ConstantFolder
                     e.printStackTrace();
                 }
             }
+//            else if (handle.getInstruction() instanceof LCMP) {
+//                try {
+//                    long value2 = (long)stack.pop();
+//                    long value1 = (long)stack.pop();
+//                    int constant = 0;
+//                    if (value1 < value2) {
+//                        constant = -1;
+//                    } else if (value1 > value2) {
+//                        constant = 1;
+//                    }
+//                    ilist.append(handle, new PUSH(cpgen, constant));
+//                    ilist.delete(handle.getPrev().getPrev(), handle);
+//                    count++;
+//                } catch (TargetLostException e) {
+////                    e.printStackTrace();
+//                }
+//            } else if (handle.getInstruction() instanceof IFEQ
+//                    || handle.getInstruction() instanceof IFNE
+//                    || handle.getInstruction() instanceof IFLT
+//                    || handle.getInstruction() instanceof IFGE
+//                    || handle.getInstruction() instanceof IFGT
+//                    || handle.getInstruction() instanceof IFLE) {
+//                try {
+//                    ilist.delete(handle, handle.getNext().getNext().getNext());
+//                } catch (TargetLostException e) {
+//                    e.printStackTrace();
+//                }
+//            }
 
         if (count > 0) {
             return mgen.getMethod();
@@ -271,8 +290,6 @@ public class ConstantFolder
                     case 0x87: int in = (int)stack.pop();
                         double out = (double) in;
                         stack.push(out); break;
-
-                    case 0x94: break;
                 }
 
                 if (op >= 0x02 && op <= 0x08) { //Load int
