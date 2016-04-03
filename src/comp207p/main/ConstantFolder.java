@@ -13,21 +13,21 @@ import org.apache.bcel.util.InstructionFinder;
 
 public class ConstantFolder
 {
-	ClassParser parser = null;
-	ClassGen gen = null;
+    ClassParser parser = null;
+    ClassGen gen = null;
 
-	JavaClass original = null;
-	JavaClass optimized = null;
+    JavaClass original = null;
+    JavaClass optimized = null;
 
-	public ConstantFolder(String classFilePath) {
-		try{
-			this.parser = new ClassParser(classFilePath);
-			this.original = this.parser.parse();
-			this.gen = new ClassGen(this.original);
-		} catch(IOException e){
-			e.printStackTrace();
-		}
-	}
+    public ConstantFolder(String classFilePath) {
+        try{
+            this.parser = new ClassParser(classFilePath);
+            this.original = this.parser.parse();
+            this.gen = new ClassGen(this.original);
+        } catch(IOException e){
+            e.printStackTrace();
+        }
+    }
 
     public int parseBiSipush(String bipush) {
         String result = "";
@@ -38,6 +38,11 @@ public class ConstantFolder
         }
         int result_int = Integer.parseInt(result);
         return result_int;
+    }
+
+    public String parseStuff(String input) {
+        String[] result = input.split(" ");
+        return result[result.length-1];
     }
 
     private void pop2(Stack<Object> stack) {
@@ -71,74 +76,75 @@ public class ConstantFolder
     public Method optimiseArithmeticOp(InstructionList ilist, int position, MethodGen mgen, ConstantPoolGen cpgen, Stack stack) {
         int count = 0;
         InstructionHandle handle = ilist.findHandle(position);
-            if (handle.getInstruction() instanceof DADD
-                    || handle.getInstruction() instanceof DMUL
-                    || handle.getInstruction() instanceof DDIV
-                    || handle.getInstruction() instanceof DSUB) {
-                    double constant = (double)stack.peek();
-                    cpgen.addDouble(constant);
-                    remove3op(ilist, handle, cpgen, constant, count);
+        if (handle.getInstruction() instanceof DADD
+                || handle.getInstruction() instanceof DMUL
+                || handle.getInstruction() instanceof DDIV
+                || handle.getInstruction() instanceof DSUB) {
+            double constant = (double)stack.peek();
+            cpgen.addDouble(constant);
+            remove3op(ilist, handle, cpgen, constant, count);
 
-            } else if (handle.getInstruction() instanceof FADD
-                    || handle.getInstruction() instanceof FMUL
-                    || handle.getInstruction() instanceof FDIV
-                    || handle.getInstruction() instanceof FSUB) {
-                    float constant = (float)stack.peek();
-                    cpgen.addFloat(constant);
-                    remove3op(ilist, handle, cpgen, constant, count);
+        } else if (handle.getInstruction() instanceof FADD
+                || handle.getInstruction() instanceof FMUL
+                || handle.getInstruction() instanceof FDIV
+                || handle.getInstruction() instanceof FSUB) {
+            float constant = (float)stack.peek();
+            cpgen.addFloat(constant);
+            remove3op(ilist, handle, cpgen, constant, count);
 
-            } else if (handle.getInstruction() instanceof IADD
-                    || handle.getInstruction() instanceof IMUL
-                    || handle.getInstruction() instanceof IDIV
-                    || handle.getInstruction() instanceof ISUB) {
-                try {
-                    int constant = (int)stack.peek();
-                    cpgen.addInteger(constant);
-                    //For some reason 'remove3op doesn't work here
-                    ilist.append(handle, new PUSH(cpgen, constant));
-                    ilist.delete(handle.getPrev().getPrev(), handle);
-                    count++;
-                } catch (TargetLostException e) {
-                    e.printStackTrace();
-                }
-            } else if (handle.getInstruction() instanceof LADD
-                    || handle.getInstruction() instanceof LMUL
-                    || handle.getInstruction() instanceof LDIV
-                    || handle.getInstruction() instanceof LSUB) {
-                long constant = (long) stack.peek();
-                cpgen.addLong(constant);
-                remove3op(ilist, handle, cpgen, constant, count);
+        } else if (handle.getInstruction() instanceof IADD
+                || handle.getInstruction() instanceof IMUL
+                || handle.getInstruction() instanceof IDIV
+                || handle.getInstruction() instanceof ISUB) {
+            try {
+                int constant = (int)stack.peek();
+                cpgen.addInteger(constant);
+                //For some reason 'remove3op doesn't work here
+                ilist.append(handle, new PUSH(cpgen, constant));
+                ilist.delete(handle.getPrev().getPrev(), handle);
+                count++;
+            } catch (TargetLostException e) {
+                e.printStackTrace();
             }
+        } else if (handle.getInstruction() instanceof LADD
+                || handle.getInstruction() instanceof LMUL
+                || handle.getInstruction() instanceof LDIV
+                || handle.getInstruction() instanceof LSUB) {
+            long constant = (long) stack.peek();
+            cpgen.addLong(constant);
+            remove3op(ilist, handle, cpgen, constant, count);
+        }
 
-            else if (handle.getInstruction() instanceof LCMP) {
-                try {
-                    long value2 = (long)stack.pop();
-                    long value1 = (long)stack.pop();
-                    int constant = 0;
-                    if (value1 < value2) {
-                        constant = -1;
-                    } else if (value1 > value2) {
-                        constant = 1;
-                    }
-                    ilist.append(handle, new PUSH(cpgen, constant));
-                    ilist.delete(handle.getPrev().getPrev(), handle);
-                    count++;
-                } catch (TargetLostException e) {
-                    e.printStackTrace();
+        else if (handle.getInstruction() instanceof LCMP) {
+            try {
+                long value2 = (long)stack.pop();
+                long value1 = (long)stack.pop();
+                int constant = 0;
+                if (value1 < value2) {
+                    constant = -1;
+                } else if (value1 > value2) {
+                    constant = 1;
                 }
-            } else if (handle.getInstruction() instanceof IFEQ
-                    || handle.getInstruction() instanceof IFNE
-                    || handle.getInstruction() instanceof IFLT
-                    || handle.getInstruction() instanceof IFGE
-                    || handle.getInstruction() instanceof IFGT
-                    || handle.getInstruction() instanceof IFLE) {
-                try {
-                    ilist.delete(handle, handle.getNext().getNext().getNext());
-                    count++;
-                } catch (TargetLostException e) {
-                    e.printStackTrace();
-                }
+                ilist.append(handle, new PUSH(cpgen, constant));
+                ilist.delete(handle.getPrev().getPrev(), handle);
+                count++;
+            } catch (TargetLostException e) {
+                e.printStackTrace();
             }
+        } else if (handle.getInstruction() instanceof IFEQ
+                || handle.getInstruction() instanceof IFNE
+                || handle.getInstruction() instanceof IFLT
+                || handle.getInstruction() instanceof IFGE
+                || handle.getInstruction() instanceof IFGT
+                || handle.getInstruction() instanceof IFLE) {
+            try {
+                ilist.delete(handle, handle.getNext().getNext().getNext());
+                count++;
+            } catch (TargetLostException e) {
+                e.printStackTrace();
+            }
+        }
+
 
 //            else if (handle.getInstruction() instanceof IF_ICMPEQ
 //                    || handle.getInstruction() instanceof IF_ICMPNE
@@ -197,14 +203,14 @@ public class ConstantFolder
     }
 
     public void optimize()
-	{
-		ClassGen cgen = new ClassGen(original);
-		ConstantPoolGen cpgen = cgen.getConstantPool();
-		ConstantPool cp = cpgen.getConstantPool();
-		Constant[] constants = cp.getConstantPool();
+    {
+        ClassGen cgen = new ClassGen(original);
+        ConstantPoolGen cpgen = cgen.getConstantPool();
+        ConstantPool cp = cpgen.getConstantPool();
+        Constant[] constants = cp.getConstantPool();
 
         Method[] methods = cgen.getMethods();
-		HashMap localvars = new HashMap();
+        HashMap localvars = new HashMap();
 
         for (int m = 0; m < methods.length; ++m) {
 
@@ -240,7 +246,7 @@ public class ConstantFolder
                         stack.push((Number)localvars.get(index));
                     }
                     else if (op >= 0x30 && op <= 0x35) { //Load __ from array[#index]
-    //                    stack.push();
+                        //                    stack.push();
                     }
                 }
 
@@ -254,6 +260,17 @@ public class ConstantFolder
                     case 0x0f: stack.push(new Double(1.0)); break;
                     case 0x09: stack.push(new Long(0)); break;
                     case 0x0a: stack.push(new Long(1)); break;
+
+
+                    /*
+                    * INSTEAD OF PERFORMING OPERATIONS HERE, WE ACCESS WHAT'S ON TOP OF THE STACK
+                     * AFTER THE ARITHMETIC OPERATIONS. WE CREATE A NEW CONSTANT FOR THAT, AND A LOADING
+                     * INSTRUCTION
+                    *   something like iadd.getValue();
+                    *
+                    *
+                    * */
+
 
                     //adding two numbers
                     case 0x63: stack.push((double)stack.pop() + (double)stack.pop());break;
@@ -279,17 +296,15 @@ public class ConstantFolder
                     case 0x6d: stack.push(1/(long)stack.pop() * (long)stack.pop());break;
                     case 0x6c: stack.push(1/(int)stack.pop() * (int)stack.pop());break;
 
-                    //comparing integers
-//                    case 0x9f: if((int)stack.pop() == (int)stack.pop()){stack.push(1);} else {stack.push(0);}; break;
-//                    case 0xa2: if((int)stack.pop() <= (int)stack.pop()){stack.push(1);} else {stack.push(0);}; break;
-//                    case 0xa3: if((int)stack.pop() > (int)stack.pop()){stack.push(1);} else {stack.push(0);}; break;
-//                    case 0xa4: if((int)stack.pop() >= (int)stack.pop()){stack.push(1);} else {stack.push(0);}; break;
-//                    case 0xa1: if((int)stack.pop() < (int)stack.pop()){stack.push(1);} else {stack.push(0);}; break;
-//                    case 0xa0: if((int)stack.pop() != (int)stack.pop()){stack.push(1);} else {stack.push(0);}; break;
-
                     //bipush and sipush
                     case 0x10:
                     case 0x11: stack.push(parseBiSipush(current.toString(cp))); break;
+
+//                    //LOADING REFERENCE FROM LOCAL VARIABLES
+//                    case 0x2a: stack.push(localvars.get(0));break;
+//                    case 0x2b: stack.push(localvars.get(1));break;
+//                    case 0x2c: stack.push(localvars.get(2));break;
+//                    case 0x2d: stack.push(localvars.get(3));break;
 
                     //storing anything into 0 of hashmap local variables
                     case 0x4b:
@@ -364,8 +379,8 @@ public class ConstantFolder
             System.out.println("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
 //            printStack(stack);
         }
-		this.optimized = gen.getJavaClass();
-	}
+        this.optimized = gen.getJavaClass();
+    }
 
     public void printInstructions(InstructionList ilist, ConstantPool cp) {
         for (int j = 0; j < ilist.getLength(); ++j) {
@@ -380,20 +395,20 @@ public class ConstantFolder
             System.out.println(stack.get(i));
         }
     }
-	
-	public void write(String optimisedFilePath)
-	{
-		this.optimize();
 
-		try {
-			FileOutputStream out = new FileOutputStream(new File(optimisedFilePath));
-			this.optimized.dump(out);
-		} catch (FileNotFoundException e) {
-			// Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
+    public void write(String optimisedFilePath)
+    {
+        this.optimize();
+
+        try {
+            FileOutputStream out = new FileOutputStream(new File(optimisedFilePath));
+            this.optimized.dump(out);
+        } catch (FileNotFoundException e) {
+            // Auto-generated catch block
+            e.printStackTrace();
+        } catch (IOException e) {
+            // Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
 }
