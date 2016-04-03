@@ -53,94 +53,97 @@ public class ConstantFolder
         }
     }
 
-    public Method removeArithOp(InstructionList ilist, int i, MethodGen mgen, ConstantPoolGen cpgen, Stack stack) {
+//    public Method optimiseCompareOp(InstructionList ilist, int position, MethodGen mgen, ConstantPoolGen cpgen, Stack stack) {
+//        int count = 0;
+//        InstructionHandle handle = ilist.findHandle(position);
+//
+//        if (count > 0) {
+//            return mgen.getMethod();
+//        }
+//        return null;
+//    }
+
+    public void remove3op(InstructionList ilist, InstructionHandle handle, ConstantPoolGen cpgen, Number constant, int count) {
+        try {
+            ilist.append(handle, new PUSH(cpgen, constant));
+            ilist.delete(handle.getPrev().getPrev(), handle);
+            count++;
+        } catch (TargetLostException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public Method optimiseArithmeticOp(InstructionList ilist, int position, MethodGen mgen, ConstantPoolGen cpgen, Stack stack) {
         int count = 0;
-        InstructionHandle handle = ilist.findHandle(i);
+        InstructionHandle handle = ilist.findHandle(position);
             if (handle.getInstruction() instanceof DADD
                     || handle.getInstruction() instanceof DMUL
                     || handle.getInstruction() instanceof DDIV
                     || handle.getInstruction() instanceof DSUB) {
-                try {
                     double constant = (double)stack.peek();
-                    int index = cpgen.addDouble(constant);
-                    ilist.append(handle, new PUSH(cpgen, constant));
-                    ilist.delete(handle.getPrev().getPrev(), handle);
-                    count++;
-                } catch (TargetLostException e) {
-                    System.out.println("Couldn't delete arithmetic op instruction");
-                    e.printStackTrace();
-                }
+                    cpgen.addDouble(constant);
+                    remove3op(ilist, handle, cpgen, constant, count);
+
             } else if (handle.getInstruction() instanceof FADD
                     || handle.getInstruction() instanceof FMUL
                     || handle.getInstruction() instanceof FDIV
                     || handle.getInstruction() instanceof FSUB) {
-                try {
                     float constant = (float)stack.peek();
-                    int index = cpgen.addFloat(constant);
-                    ilist.append(handle, new PUSH(cpgen, constant));
-                    ilist.delete(handle.getPrev().getPrev(), handle);
-                    count++;
-                } catch (TargetLostException e) {
-                    System.out.println("Couldn't delete arithmetic op instruction");
-                    e.printStackTrace();
-                }
+                    cpgen.addFloat(constant);
+                    remove3op(ilist, handle, cpgen, constant, count);
+
             } else if (handle.getInstruction() instanceof IADD
                     || handle.getInstruction() instanceof IMUL
                     || handle.getInstruction() instanceof IDIV
                     || handle.getInstruction() instanceof ISUB) {
                 try {
                     int constant = (int)stack.peek();
-                    int index = cpgen.addInteger(constant);
+                    cpgen.addInteger(constant);
+                    //For some reason 'remove3op doesn't work here
                     ilist.append(handle, new PUSH(cpgen, constant));
                     ilist.delete(handle.getPrev().getPrev(), handle);
                     count++;
                 } catch (TargetLostException e) {
-                    System.out.println("Couldn't delete arithmetic op instruction");
                     e.printStackTrace();
                 }
             } else if (handle.getInstruction() instanceof LADD
                     || handle.getInstruction() instanceof LMUL
                     || handle.getInstruction() instanceof LDIV
                     || handle.getInstruction() instanceof LSUB) {
+                long constant = (long) stack.peek();
+                cpgen.addLong(constant);
+                remove3op(ilist, handle, cpgen, constant, count);
+            }
+
+            else if (handle.getInstruction() instanceof LCMP) {
                 try {
-                    long constant = (long)stack.peek();
-                    int index = cpgen.addLong(constant);
+                    long value2 = (long)stack.pop();
+                    long value1 = (long)stack.pop();
+                    int constant = 0;
+                    if (value1 < value2) {
+                        constant = -1;
+                    } else if (value1 > value2) {
+                        constant = 1;
+                    }
                     ilist.append(handle, new PUSH(cpgen, constant));
                     ilist.delete(handle.getPrev().getPrev(), handle);
                     count++;
                 } catch (TargetLostException e) {
-                    System.out.println("Couldn't delete arithmetic op instruction");
+                    e.printStackTrace();
+                }
+            } else if (handle.getInstruction() instanceof IFEQ
+                    || handle.getInstruction() instanceof IFNE
+                    || handle.getInstruction() instanceof IFLT
+                    || handle.getInstruction() instanceof IFGE
+                    || handle.getInstruction() instanceof IFGT
+                    || handle.getInstruction() instanceof IFLE) {
+                try {
+                    ilist.delete(handle, handle.getNext().getNext().getNext());
+                    count++;
+                } catch (TargetLostException e) {
                     e.printStackTrace();
                 }
             }
-//            else if (handle.getInstruction() instanceof LCMP) {
-//                try {
-//                    long value2 = (long)stack.pop();
-//                    long value1 = (long)stack.pop();
-//                    int constant = 0;
-//                    if (value1 < value2) {
-//                        constant = -1;
-//                    } else if (value1 > value2) {
-//                        constant = 1;
-//                    }
-//                    ilist.append(handle, new PUSH(cpgen, constant));
-//                    ilist.delete(handle.getPrev().getPrev(), handle);
-//                    count++;
-//                } catch (TargetLostException e) {
-////                    e.printStackTrace();
-//                }
-//            } else if (handle.getInstruction() instanceof IFEQ
-//                    || handle.getInstruction() instanceof IFNE
-//                    || handle.getInstruction() instanceof IFLT
-//                    || handle.getInstruction() instanceof IFGE
-//                    || handle.getInstruction() instanceof IFGT
-//                    || handle.getInstruction() instanceof IFLE) {
-//                try {
-//                    ilist.delete(handle, handle.getNext().getNext().getNext());
-//                } catch (TargetLostException e) {
-//                    e.printStackTrace();
-//                }
-//            }
 
         if (count > 0) {
             return mgen.getMethod();
@@ -186,7 +189,6 @@ public class ConstantFolder
             while (i < ilist.getLength()) {
                 Instruction current = ilist.getInstructions()[i];
                 int[] positions = ilist.getInstructionPositions();
-//                System.out.println("\t" + current.toString(cp));
 
                 short op = current.getOpcode();
                 if (current instanceof IndexedInstruction) {
@@ -221,6 +223,17 @@ public class ConstantFolder
                     case 0x09: stack.push(new Long(0)); break;
                     case 0x0a: stack.push(new Long(1)); break;
 
+
+                    /*
+                    * INSTEAD OF PERFORMING OPERATIONS HERE, WE ACCESS WHAT'S ON TOP OF THE STACK
+                     * AFTER THE ARITHMETIC OPERATIONS. WE CREATE A NEW CONSTANT FOR THAT, AND A LOADING
+                     * INSTRUCTION
+                    *   something like iadd.getValue();
+                    *
+                    *
+                    * */
+
+
                     //adding two numbers
                     case 0x63: stack.push((double)stack.pop() + (double)stack.pop());break;
                     case 0x62: stack.push((float)stack.pop() + (float)stack.pop());break;
@@ -249,11 +262,11 @@ public class ConstantFolder
                     case 0x10:
                     case 0x11: stack.push(parseBiSipush(current.toString(cp))); break;
 
-                    //LOADING REFERENCE FROM LOCAL VARIABLES
-                    case 0x2a: stack.push(localvars.get(0));break;
-                    case 0x2b: stack.push(localvars.get(1));break;
-                    case 0x2c: stack.push(localvars.get(2));break;
-                    case 0x2d: stack.push(localvars.get(3));break;
+//                    //LOADING REFERENCE FROM LOCAL VARIABLES
+//                    case 0x2a: stack.push(localvars.get(0));break;
+//                    case 0x2b: stack.push(localvars.get(1));break;
+//                    case 0x2c: stack.push(localvars.get(2));break;
+//                    case 0x2d: stack.push(localvars.get(3));break;
 
                     //storing anything into 0 of hashmap local variables
                     case 0x4b:
@@ -309,10 +322,16 @@ public class ConstantFolder
                     stack.push((Number)localvars.get(3));
                 }
 
-                Method optimised = removeArithOp(ilist, positions[i], mgen, cpgen, stack);
-                if (optimised != null) {
-                    methods[m] = optimised;
-                    i=0;
+                Method optimisedArithmetic = optimiseArithmeticOp(ilist, positions[i], mgen, cpgen, stack);
+//                Method optimisedCompare = optimiseCompareOp(ilist, positions[i], mgen, cpgen, stack);
+//                System.out.println("opt" + optimisedCompare);
+                if (optimisedArithmetic != null) {
+                    methods[m] = optimisedArithmetic;
+                    i = 0; //Restart from the first instruction to optimise more, do so until everything is optimised
+//                }
+//                else if (optimisedCompare != null) {
+//                    methods[m] = optimisedCompare;
+//                    i = 0;
                 } else {
                     i++;
                 }
