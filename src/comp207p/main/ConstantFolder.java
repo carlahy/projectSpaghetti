@@ -40,11 +40,6 @@ public class ConstantFolder
         return result_int;
     }
 
-    public String parseStuff(String input) {
-        String[] result = input.split(" ");
-        return result[result.length-1];
-    }
-
     private void pop2(Stack<Object> stack) {
         boolean twice = !(stack.peek() instanceof Long || stack.peek() instanceof Double);
         stack.pop();
@@ -145,6 +140,43 @@ public class ConstantFolder
                 }
             }
 
+//            else if (handle.getInstruction() instanceof IF_ICMPEQ
+//                    || handle.getInstruction() instanceof IF_ICMPNE
+//                    || handle.getInstruction() instanceof IF_ICMPGT
+//                    || handle.getInstruction() instanceof IF_ICMPLT
+//                    || handle.getInstruction() instanceof IF_ICMPGE
+//                    || handle.getInstruction() instanceof IF_ICMPLE) {
+//                try {
+//                    ilist.delete(handle.getPrev().getPrev(), handle.getNext().getNext().getNext());
+//                    count++;
+//                } catch (TargetLostException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+
+        /*
+        * load int
+        * loat int
+        * compare
+        * if compare_instruction true >> load match[]
+        *
+        * */
+
+//        InstructionFinder f = new InstructionFinder(il);
+//        String pat = "IfInstruction (ICONST_0|ICONST_1) GOTO (ICONST_0|ICONST_1)";
+//        for(Iterator e = f.search(pat); e.hasNext(); ) {
+//            InstructionHandle[] match = (InstructionHandle[])e.next();
+//            int value2 = stack.pop();
+//            int value1 = stack.pop();
+//            if (match[0].getInstruction instanceof)
+//            match[0].getTarget(); // Update target
+//            try {
+//                il.delete(match[1], match[5]);
+//            } catch(TargetLostException ex) {
+//
+//            }
+//        }
+
         if (count > 0) {
             return mgen.getMethod();
         }
@@ -223,17 +255,6 @@ public class ConstantFolder
                     case 0x09: stack.push(new Long(0)); break;
                     case 0x0a: stack.push(new Long(1)); break;
 
-
-                    /*
-                    * INSTEAD OF PERFORMING OPERATIONS HERE, WE ACCESS WHAT'S ON TOP OF THE STACK
-                     * AFTER THE ARITHMETIC OPERATIONS. WE CREATE A NEW CONSTANT FOR THAT, AND A LOADING
-                     * INSTRUCTION
-                    *   something like iadd.getValue();
-                    *
-                    *
-                    * */
-
-
                     //adding two numbers
                     case 0x63: stack.push((double)stack.pop() + (double)stack.pop());break;
                     case 0x62: stack.push((float)stack.pop() + (float)stack.pop());break;
@@ -258,15 +279,17 @@ public class ConstantFolder
                     case 0x6d: stack.push(1/(long)stack.pop() * (long)stack.pop());break;
                     case 0x6c: stack.push(1/(int)stack.pop() * (int)stack.pop());break;
 
+                    //comparing integers
+//                    case 0x9f: if((int)stack.pop() == (int)stack.pop()){stack.push(1);} else {stack.push(0);}; break;
+//                    case 0xa2: if((int)stack.pop() <= (int)stack.pop()){stack.push(1);} else {stack.push(0);}; break;
+//                    case 0xa3: if((int)stack.pop() > (int)stack.pop()){stack.push(1);} else {stack.push(0);}; break;
+//                    case 0xa4: if((int)stack.pop() >= (int)stack.pop()){stack.push(1);} else {stack.push(0);}; break;
+//                    case 0xa1: if((int)stack.pop() < (int)stack.pop()){stack.push(1);} else {stack.push(0);}; break;
+//                    case 0xa0: if((int)stack.pop() != (int)stack.pop()){stack.push(1);} else {stack.push(0);}; break;
+
                     //bipush and sipush
                     case 0x10:
                     case 0x11: stack.push(parseBiSipush(current.toString(cp))); break;
-
-//                    //LOADING REFERENCE FROM LOCAL VARIABLES
-//                    case 0x2a: stack.push(localvars.get(0));break;
-//                    case 0x2b: stack.push(localvars.get(1));break;
-//                    case 0x2c: stack.push(localvars.get(2));break;
-//                    case 0x2d: stack.push(localvars.get(3));break;
 
                     //storing anything into 0 of hashmap local variables
                     case 0x4b:
