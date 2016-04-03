@@ -40,19 +40,6 @@ public class ConstantFolder
         return result_int;
     }
 
-    public String parseStuff(String input) {
-        String[] result = input.split(" ");
-        return result[result.length-1];
-    }
-
-    private void pop2(Stack<Object> stack) {
-        boolean twice = !(stack.peek() instanceof Long || stack.peek() instanceof Double);
-        stack.pop();
-        if (twice) {
-            stack.pop();
-        }
-    }
-
 //    public Method optimiseCompareOp(InstructionList ilist, int position, MethodGen mgen, ConstantPoolGen cpgen, Stack stack) {
 //        int count = 0;
 //        InstructionHandle handle = ilist.findHandle(position);
@@ -172,7 +159,7 @@ public class ConstantFolder
 		Constant[] constants = cp.getConstantPool();
 
         Method[] methods = cgen.getMethods();
-		HashMap localvars = new HashMap();
+		// HashMap localvars = new HashMap();
 
         for (int m = 0; m < methods.length; ++m) {
 
@@ -184,6 +171,7 @@ public class ConstantFolder
                     " : " + methods[m].getName() + " : " + ilist.getLength() + " instructions");
 
             LocalVariableGen lgen;
+            LocalVariableGen[] localvars;
             printInstructions(ilist, cp);
             int i = 0;
             while (i < ilist.getLength()) {
@@ -213,26 +201,11 @@ public class ConstantFolder
                 }
 
                 switch(op) {
-                    case 0x57: stack.pop(); break;
-                    case 0x58: pop2(stack); break;
-                    case 0x01: stack.push(null); break;
-                    case 0x59: stack.push(stack.peek()); break;
-
+                    //pushing constants onto the stack
                     case 0x0e: stack.push(new Double(0.0)); break;
                     case 0x0f: stack.push(new Double(1.0)); break;
                     case 0x09: stack.push(new Long(0)); break;
                     case 0x0a: stack.push(new Long(1)); break;
-
-
-                    /*
-                    * INSTEAD OF PERFORMING OPERATIONS HERE, WE ACCESS WHAT'S ON TOP OF THE STACK
-                     * AFTER THE ARITHMETIC OPERATIONS. WE CREATE A NEW CONSTANT FOR THAT, AND A LOADING
-                     * INSTRUCTION
-                    *   something like iadd.getValue();
-                    *
-                    *
-                    * */
-
 
                     //adding two numbers
                     case 0x63: stack.push((double)stack.pop() + (double)stack.pop());break;
@@ -274,7 +247,9 @@ public class ConstantFolder
                     case 0x43:
                     case 0x3b:
                     case 0x3f:
-                        localvars.put(0, stack.peek());
+                        lgen = mgen.addLocalVariable(0, new ObjectType("java.io.BufferedReader"), null, null);
+                        localvars[0] = lgen;
+                        // localvars.put(0, stack.peek());
                         stack.pop(); break;
 
                     //storing anything into 1 of hashmap local variables
@@ -283,7 +258,9 @@ public class ConstantFolder
                     case 0x44:
                     case 0x3c:
                     case 0x40:
-                        localvars.put(1, stack.peek());
+                        lgen = mgen.addLocalVariable(stack.peek(), new ObjectType("java.io.BufferedReader"), null, null);
+                        // localvars.put(1, stack.peek());
+                        localvars[1] = lgen;
                         stack.pop(); break;
 
                     //storing anything into 2 of hashmap local variables
@@ -291,14 +268,22 @@ public class ConstantFolder
                     case 0x49:
                     case 0x45:
                     case 0x3d:
-                    case 0x41: localvars.put(2, stack.peek()); stack.pop(); break;
+                    case 0x41: 
+                        lgen = mgen.addLocalVariable(2, new ObjectType("java.io.BufferedReader"), null, null);
+                        localvars[2] = lgen;
+                        // localvars.put(2, stack.peek()); 
+                        stack.pop(); break;
 
                     //storing anything into 3 of hashmap local variables
                     case 0x4e:
                     case 0x4a:
                     case 0x46:
                     case 0x3e:
-                    case 0x42: localvars.put(3, stack.peek()); stack.pop(); break;
+                    case 0x42: 
+                        lgen = mgen.addLocalVariable(3, new ObjectType("java.io.BufferedReader"), null, null);
+                        localvars[3] = lgen;
+                        // localvars.put(3, stack.peek()); 
+                        stack.pop(); break;
 
                     case 0x87: int in = (int)stack.pop();
                         double out = (double) in;
@@ -310,16 +295,20 @@ public class ConstantFolder
                 }
                 //LOADING NUMBER (int, long, float, double) FROM LOCAL VARIABLES
                 else if (op == 0x26 || op == 0x22 || op == 0x1a || op == 0x1e) {
-                    stack.push(localvars.get(0));
+                    stack.push(localvars[0].getLocalVariable(cpgen))
+                    // stack.push(localvars.get(0));
                 }
                 else if (op == 0x27 || op == 0x23 || op == 0x1b || op == 0x1f) {
-                    stack.push(localvars.get(1));
+                    stack.push(localvars[1].getLocalVariable(cpgen))
+                    // stack.push(localvars.get(1));
                 }
                 else if (op == 0x28 || op == 0x24 || op == 0x1c || op == 0x20) {
-                    stack.push((Number)localvars.get(2));
+                    stack.push(localvars[2].getLocalVariable(cpgen))
+                    // stack.push((Number)localvars.get(2));
                 }
                 else if (op == 0x29 || op == 0x25 || op == 0x1d || op == 0x21) {
-                    stack.push((Number)localvars.get(3));
+                    stack.push(localvars[3].getLocalVariable(cpgen))
+                    // stack.push((Number)localvars.get(3));
                 }
 
                 Method optimisedArithmetic = optimiseArithmeticOp(ilist, positions[i], mgen, cpgen, stack);
