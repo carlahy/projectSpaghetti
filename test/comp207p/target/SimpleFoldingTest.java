@@ -32,7 +32,7 @@ public class SimpleFoldingTest {
     @Test
     public void testSimple(){
         sf.simple();
-        System.out.println("\tSimple Folding: MethodSimple() " + outContent.toString());
+//        System.out.println("\tSimple Folding: MethodSimple() " + outContent.toString());
         assertEquals("12412\n", outContent.toString());
     }
 

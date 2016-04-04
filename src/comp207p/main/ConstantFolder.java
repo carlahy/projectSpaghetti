@@ -39,25 +39,18 @@ public class ConstantFolder {
 //        return null;
 //    }
 
-    // When we see a ConversionInstruction
-    // Find and pop last value pushed to the stack
-    // According to the instruction, appropriately convert the number
-    // Replace the conversion instruction with a loading instruction
     public void optimiseNumberConversion(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
         Number constant = popStack(ilist, handle, cpgen);
-        System.out.println("Converting number... " + constant);
         if (handle.getInstruction() instanceof I2D
                 || handle.getInstruction() instanceof L2D
                 || handle.getInstruction() instanceof F2D) {
             try {
                 int result = (int)constant;
                 cpgen.addDouble((double)result);
-                System.out.println("Problem");
                 ilist.append(handle, new PUSH(cpgen, (double)result));
-                System.out.println("Here");
                 ilist.delete(handle);
             } catch (TargetLostException e) {
-                //e.printStackTrace();
+                e.printStackTrace();
             }
         } else if (handle.getInstruction() instanceof D2I
                 || handle.getInstruction() instanceof L2I
@@ -67,7 +60,7 @@ public class ConstantFolder {
                 ilist.append(handle, new PUSH(cpgen, (int)constant));
                 ilist.delete(handle);
             } catch (TargetLostException e) {
-                //e.printStackTrace();
+                e.printStackTrace();
             }
         } else if (handle.getInstruction() instanceof I2L
                 || handle.getInstruction() instanceof D2L
@@ -77,7 +70,7 @@ public class ConstantFolder {
                 ilist.append(handle, new PUSH(cpgen, (long)constant));
                 ilist.delete(handle);
             } catch (TargetLostException e) {
-                //e.printStackTrace();
+                e.printStackTrace();
             }
         } else if (handle.getInstruction() instanceof I2F
                 || handle.getInstruction() instanceof L2F
@@ -87,7 +80,7 @@ public class ConstantFolder {
                 ilist.append(handle, new PUSH(cpgen, (float)constant));
                 ilist.delete(handle);
             } catch (TargetLostException e) {
-                //e.printStackTrace();
+                e.printStackTrace();
             }
         }
 
@@ -153,9 +146,52 @@ public class ConstantFolder {
             return (long)popStack(ilist, handle, cpgen) * (long)popStack(ilist, handle, cpgen);
         } else if (handle.getInstruction() instanceof LDIV) {
             return 1/(long)popStack(ilist, handle, cpgen) * (long)popStack(ilist, handle, cpgen);
-        } else { //(handle.getInstruction() instanceof LSUB)
+        } else if (handle.getInstruction() instanceof LSUB) {
             return -(long)popStack(ilist, handle, cpgen) + (long)popStack(ilist, handle, cpgen);
         }
+
+        else if (handle.getInstruction() instanceof INEG) {
+            return -(int)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof LNEG) {
+            return -(long)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof DNEG) {
+            return -(double)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof FNEG) {
+            return -(float)popStack(ilist, handle, cpgen);
+        }
+
+        else if (handle.getInstruction() instanceof IREM) {
+            int value2 = (int)popStack(ilist, handle, cpgen);
+            int value1 = (int)popStack(ilist, handle, cpgen);
+            return value1 % value2;
+        } else if (handle.getInstruction() instanceof LREM) {
+            long value2 = (long)popStack(ilist, handle, cpgen);
+            long value1 = (long)popStack(ilist, handle, cpgen);
+            return  value1 % value2;
+        } else if (handle.getInstruction() instanceof DREM) {
+            double value2 = (double)popStack(ilist, handle, cpgen);
+            double value1 = (double)popStack(ilist, handle, cpgen);
+            return  value1 % value2;
+        } else if (handle.getInstruction() instanceof FREM) {
+            float value2 = (float)popStack(ilist, handle, cpgen);
+            float value1 = (float)popStack(ilist, handle, cpgen);
+            return  value1 % value2;
+        }
+
+        else if (handle.getInstruction() instanceof IOR) {
+            return -(int)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof IXOR) {
+            return -(long)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof LOR) {
+            return -(double)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof LXOR) {
+            return -(float)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof IAND) {
+            return -(double)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof LAND) {
+            return -(float)popStack(ilist, handle, cpgen);
+        }
+        return null;
     }
 
     // Replace arithmetic operation with single load instruction
@@ -217,39 +253,7 @@ public class ConstantFolder {
         }
     }
 
-    //Get top of stack value
-    public Number peekStack(InstructionHandle handle, ConstantPoolGen cpgen) {
-        Number value = null;
-        while(true) {
-            System.out.println("handle = " + handle);
-            if (handle.getInstruction() instanceof BIPUSH) {
-                value = ((BIPUSH) handle.getInstruction()).getValue();break;
-            } else if (handle.getInstruction() instanceof SIPUSH) {
-                value = ((SIPUSH) handle.getInstruction()).getValue();break;
-            } else if (handle.getInstruction() instanceof ICONST) {
-                value = ((ICONST) handle.getInstruction()).getValue();break;
-            } else if (handle.getInstruction() instanceof DCONST) {
-                value = ((DCONST) handle.getInstruction()).getValue();break;
-            } else if (handle.getInstruction() instanceof LCONST) {
-                value = ((LCONST) handle.getInstruction()).getValue();break;
-            } else if (handle.getInstruction() instanceof FCONST) {
-                value = ((FCONST) handle.getInstruction()).getValue();break;
-            } else if (handle.getInstruction() instanceof LDC) {
-                value = (Number)((LDC) handle.getInstruction()).getValue(cpgen);break;
-            } else if (handle.getInstruction() instanceof LDC2_W) {
-                value = (Number)((LDC2_W) handle.getInstruction()).getValue(cpgen);break;
-            } else {
-                handle = handle.getPrev();
-            }
-        }
-        return value;
-    }
-
-    // >> when we popStack, the last operation we are looking for is one of the listed ones
-    // as we iterate through instructions, we replace loading with popstack instruction types
-    // so we won't run into the wrong ones
-    // Get value of: bipush, sipush, iconst, dconst, lconst, fconst, ldc, ldc2_w
-    // Get last value loaded, and delete loading instruction
+    // Get value on top of the stack, and delete the corresponding instruction
     public Number popStack(InstructionList ilist, InstructionHandle handle, ConstantPoolGen cpgen) {
         Number value = null;
         while(true) {
@@ -297,18 +301,7 @@ public class ConstantFolder {
         InstructionHandle handle = ilist.getStart();
         printInstructions(ilist, cp);
         while (handle != null) {
-//            System.out.println("===HANDLE=== " + handle);
 
-            //if it's a storing instruction >> find the next loading instruction that has same index
-            // >> keep looking for instruction unless it's a store instruction with same index
-            // >> once loading instruction is found, get value at index; replace it with push instruction
-            // (inside other code)
-
-            // see store instruction >> while no store instruction of same index/not at the end of list, keep going
-            // if loading instruction with same index, replace by push instruction
-            //      look for next loading instruction with same index
-            // else look at next instruction
-            // remove storing instruction
             if (handle.getInstruction() instanceof StoreInstruction) {
                 int index = ((IndexedInstruction) handle.getInstruction()).getIndex();
                 InstructionHandle storeHandle = handle;
@@ -331,7 +324,7 @@ public class ConstantFolder {
                 cgen.replaceMethod(m, mgen.getMethod());
                 handle = ilist.getStart();
             }
-            //if it's an arithmetic operation >> get two previous loading values, operate, delete arith op, add loading instead
+
             else if (handle.getInstruction() instanceof ArithmeticInstruction) {
                 optimiseArithmeticOp(ilist, handle, mgen, cpgen);
                 cgen.replaceMethod(m, mgen.getMethod());

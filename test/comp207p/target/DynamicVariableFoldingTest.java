@@ -21,7 +21,10 @@ public class DynamicVariableFoldingTest
     @Before
     public void setUpStreams()
     {
+//        System.out.println("\tTest setup");
+
         System.setOut(new PrintStream(outContent));
+//        System.out.println("\tTest setup end");
     }
 
     @After
@@ -34,7 +37,7 @@ public class DynamicVariableFoldingTest
     @Test
     public void testMethodOne()
     {
-        System.out.println("\tTest 1");
+//        System.out.println("\tTest 1");
 //        System.out.println("\tDynamic Folding: MethodOne() " + dvf.methodOne());
         assertEquals(1301, dvf.methodOne());
     }
@@ -42,7 +45,7 @@ public class DynamicVariableFoldingTest
     @Test
     public void testMethodTwoOut()
     {
-        System.out.println("\tTest 2 out");
+//        System.out.println("\tTest 2 out");
         dvf.methodTwo();
 //        System.out.println("\tDynamic Folding: MethodTwo() out " + outContent.toString());
         assertEquals("true\n", outContent.toString());
@@ -51,7 +54,7 @@ public class DynamicVariableFoldingTest
     @Test
     public void testMethodTwoReturn()
     {
-        System.out.println("\tTest 2 return");
+//        System.out.println("\tTest 2 return");
 //        System.out.println("\tDynamic Folding: MethodTwo() " + dvf.methodTwo());
         assertEquals(true, dvf.methodTwo());
     }
@@ -59,7 +62,7 @@ public class DynamicVariableFoldingTest
     @Test
     public void testMethodThree()
     {
-        System.out.println("\tTest 3");
+//        System.out.println("\tTest 3");
 //        System.out.println("\tDynamic Folding: MethodThree() " + dvf.methodThree());
         assertEquals(84, dvf.methodThree());
     }
