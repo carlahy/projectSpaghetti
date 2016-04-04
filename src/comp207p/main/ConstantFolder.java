@@ -11,8 +11,8 @@ import org.apache.bcel.Repository;
 import org.apache.bcel.generic.InstructionList;
 import org.apache.bcel.util.InstructionFinder;
 
-public class ConstantFolder
-{
+public class ConstantFolder {
+
     ClassParser parser = null;
     ClassGen gen = null;
 
@@ -20,36 +20,12 @@ public class ConstantFolder
     JavaClass optimized = null;
 
     public ConstantFolder(String classFilePath) {
-        try{
+        try {
             this.parser = new ClassParser(classFilePath);
             this.original = this.parser.parse();
             this.gen = new ClassGen(this.original);
         } catch(IOException e){
             e.printStackTrace();
-        }
-    }
-
-    public int parseBiSipush(String bipush) {
-        String result = "";
-        int i=7;
-        while (i < bipush.length()) {
-            result = result + bipush.charAt(i);
-            i++;
-        }
-        int result_int = Integer.parseInt(result);
-        return result_int;
-    }
-
-    public String parseStuff(String input) {
-        String[] result = input.split(" ");
-        return result[result.length-1];
-    }
-
-    private void pop2(Stack<Object> stack) {
-        boolean twice = !(stack.peek() instanceof Long || stack.peek() instanceof Double);
-        stack.pop();
-        if (twice) {
-            stack.pop();
         }
     }
 
@@ -63,336 +39,356 @@ public class ConstantFolder
 //        return null;
 //    }
 
-    public void remove3op(InstructionList ilist, InstructionHandle handle, ConstantPoolGen cpgen, Number constant, int count) {
-        try {
-            ilist.append(handle, new PUSH(cpgen, constant));
-            ilist.delete(handle.getPrev().getPrev(), handle);
-            count++;
-        } catch (TargetLostException e) {
-            e.printStackTrace();
+    // When we see a ConversionInstruction
+    // Find and pop last value pushed to the stack
+    // According to the instruction, appropriately convert the number
+    // Replace the conversion instruction with a loading instruction
+    public void optimiseNumberConversion(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
+        Number constant = popStack(ilist, handle, cpgen);
+        System.out.println("Converting number... " + constant);
+        if (handle.getInstruction() instanceof I2D
+                || handle.getInstruction() instanceof L2D
+                || handle.getInstruction() instanceof F2D) {
+            try {
+                int result = (int)constant;
+                cpgen.addDouble((double)result);
+                System.out.println("Problem");
+                ilist.append(handle, new PUSH(cpgen, (double)result));
+                System.out.println("Here");
+                ilist.delete(handle);
+            } catch (TargetLostException e) {
+                //e.printStackTrace();
+            }
+        } else if (handle.getInstruction() instanceof D2I
+                || handle.getInstruction() instanceof L2I
+                || handle.getInstruction() instanceof F2I) {
+            try {
+                cpgen.addInteger((int)constant);
+                ilist.append(handle, new PUSH(cpgen, (int)constant));
+                ilist.delete(handle);
+            } catch (TargetLostException e) {
+                //e.printStackTrace();
+            }
+        } else if (handle.getInstruction() instanceof I2L
+                || handle.getInstruction() instanceof D2L
+                || handle.getInstruction() instanceof F2L) {
+            try {
+                cpgen.addLong((long)constant);
+                ilist.append(handle, new PUSH(cpgen, (long)constant));
+                ilist.delete(handle);
+            } catch (TargetLostException e) {
+                //e.printStackTrace();
+            }
+        } else if (handle.getInstruction() instanceof I2F
+                || handle.getInstruction() instanceof L2F
+                || handle.getInstruction() instanceof D2F) {
+            try {
+                cpgen.addFloat((float)constant);
+                ilist.append(handle, new PUSH(cpgen, (float)constant));
+                ilist.delete(handle);
+            } catch (TargetLostException e) {
+                //e.printStackTrace();
+            }
+        }
+
+    }
+
+    // Replace LoadInstruction with a PUSH Compound Instruction
+    public Method optimiseLoadingOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen, Number constant) {
+        if (handle.getInstruction() instanceof ILOAD) {
+            cpgen.addInteger((int)constant);
+            ilist.append(handle, new PUSH(cpgen, (int)constant));
+            removeInstruction(ilist, handle);
+        } else if (handle.getInstruction() instanceof DLOAD) {
+            cpgen.addDouble((double)constant);
+            ilist.append(handle, new PUSH(cpgen, (double)constant));
+            removeInstruction(ilist, handle);
+        } else if (handle.getInstruction() instanceof FLOAD) {
+            cpgen.addFloat((float)constant);
+            ilist.append(handle, new PUSH(cpgen, (float)constant));
+            removeInstruction(ilist, handle);
+        } else if (handle.getInstruction() instanceof LLOAD) {
+            cpgen.addLong((long)constant);
+            ilist.append(handle, new PUSH(cpgen, (long)constant));
+            removeInstruction(ilist, handle);
+        }
+        return mgen.getMethod();
+    }
+
+    // Perform arithmetic operation
+    public Number evaluateArithmeticOp(InstructionList ilist, InstructionHandle handle, ConstantPoolGen cpgen) {
+        if (handle.getInstruction() instanceof DADD) {
+            return (double)popStack(ilist, handle, cpgen) + (double)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof DMUL) {
+            return (double)popStack(ilist, handle, cpgen) * (double)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof DDIV) {
+            return 1/(double)popStack(ilist, handle, cpgen) * (double)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof DSUB) {
+            return -(double)popStack(ilist, handle, cpgen) + (double)popStack(ilist, handle, cpgen);
+        }
+
+        else if (handle.getInstruction() instanceof FADD) {
+            return (float)popStack(ilist, handle, cpgen) + (float)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof FMUL) {
+            return (float)popStack(ilist, handle, cpgen) * (float)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof FDIV) {
+            return 1/(float)popStack(ilist, handle, cpgen) * (float)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof FSUB) {
+            return -(float)popStack(ilist, handle, cpgen) + (float)popStack(ilist, handle, cpgen);
+        }
+
+        else if (handle.getInstruction() instanceof IADD) {
+            return (int)popStack(ilist, handle, cpgen) + (int)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof IMUL) {
+            return (int)popStack(ilist, handle, cpgen) * (int)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof IDIV) {
+            return 1/(int)popStack(ilist, handle, cpgen) * (int)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof ISUB) {
+            return -(int)popStack(ilist, handle, cpgen) + (int)popStack(ilist, handle, cpgen);
+        }
+
+        else if (handle.getInstruction() instanceof LADD) {
+            return (long)popStack(ilist, handle, cpgen) + (long)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof LMUL) {
+            return (long)popStack(ilist, handle, cpgen) * (long)popStack(ilist, handle, cpgen);
+        } else if (handle.getInstruction() instanceof LDIV) {
+            return 1/(long)popStack(ilist, handle, cpgen) * (long)popStack(ilist, handle, cpgen);
+        } else { //(handle.getInstruction() instanceof LSUB)
+            return -(long)popStack(ilist, handle, cpgen) + (long)popStack(ilist, handle, cpgen);
         }
     }
 
-    public Method optimiseArithmeticOp(InstructionList ilist, int position, MethodGen mgen, ConstantPoolGen cpgen, Stack stack) {
+    // Replace arithmetic operation with single load instruction
+    public Method optimiseArithmeticOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
         int count = 0;
-        InstructionHandle handle = ilist.findHandle(position);
-        if (handle.getInstruction() instanceof DADD
-                || handle.getInstruction() instanceof DMUL
-                || handle.getInstruction() instanceof DDIV
-                || handle.getInstruction() instanceof DSUB) {
-            double constant = (double)stack.peek();
-            cpgen.addDouble(constant);
-            remove3op(ilist, handle, cpgen, constant, count);
-
-        } else if (handle.getInstruction() instanceof FADD
-                || handle.getInstruction() instanceof FMUL
-                || handle.getInstruction() instanceof FDIV
-                || handle.getInstruction() instanceof FSUB) {
-            float constant = (float)stack.peek();
-            cpgen.addFloat(constant);
-            remove3op(ilist, handle, cpgen, constant, count);
-
-        } else if (handle.getInstruction() instanceof IADD
-                || handle.getInstruction() instanceof IMUL
-                || handle.getInstruction() instanceof IDIV
-                || handle.getInstruction() instanceof ISUB) {
+        Number constant = evaluateArithmeticOp(ilist, handle, cpgen);
+        if (constant instanceof Double) {
             try {
-                int constant = (int)stack.peek();
-                cpgen.addInteger(constant);
-                //For some reason 'remove3op doesn't work here
-                ilist.append(handle, new PUSH(cpgen, constant));
-                ilist.delete(handle.getPrev().getPrev(), handle);
+                cpgen.addDouble((double)constant);
+                ilist.append(handle, new PUSH(cpgen, (double)constant));
+                ilist.delete(handle);
                 count++;
             } catch (TargetLostException e) {
                 e.printStackTrace();
             }
-        } else if (handle.getInstruction() instanceof LADD
-                || handle.getInstruction() instanceof LMUL
-                || handle.getInstruction() instanceof LDIV
-                || handle.getInstruction() instanceof LSUB) {
-            long constant = (long) stack.peek();
-            cpgen.addLong(constant);
-            remove3op(ilist, handle, cpgen, constant, count);
-        }
 
-        else if (handle.getInstruction() instanceof LCMP) {
+        } else if (constant instanceof Float) {
             try {
-                long value2 = (long)stack.pop();
-                long value1 = (long)stack.pop();
-                int constant = 0;
-                if (value1 < value2) {
-                    constant = -1;
-                } else if (value1 > value2) {
-                    constant = 1;
-                }
-                ilist.append(handle, new PUSH(cpgen, constant));
-                ilist.delete(handle.getPrev().getPrev(), handle);
+                cpgen.addFloat((float)constant);
+                ilist.append(handle, new PUSH(cpgen, (float)constant));
+                ilist.delete(handle);
                 count++;
             } catch (TargetLostException e) {
                 e.printStackTrace();
             }
-        } else if (handle.getInstruction() instanceof IFEQ
-                || handle.getInstruction() instanceof IFNE
-                || handle.getInstruction() instanceof IFLT
-                || handle.getInstruction() instanceof IFGE
-                || handle.getInstruction() instanceof IFGT
-                || handle.getInstruction() instanceof IFLE) {
+
+        } else if (constant instanceof Integer) {
             try {
-                ilist.delete(handle, handle.getNext().getNext().getNext());
+                cpgen.addInteger((int)constant);
+                ilist.append(handle, new PUSH(cpgen, (int)constant));
+                ilist.delete(handle);
+                count++;
+            } catch (TargetLostException e) {
+                e.printStackTrace();
+            }
+
+        } else if (constant instanceof Long) {
+            try {
+                cpgen.addLong((long)constant);
+                ilist.append(handle, new PUSH(cpgen, (long)constant));
+                ilist.delete(handle);
                 count++;
             } catch (TargetLostException e) {
                 e.printStackTrace();
             }
         }
-
-
-//            else if (handle.getInstruction() instanceof IF_ICMPEQ
-//                    || handle.getInstruction() instanceof IF_ICMPNE
-//                    || handle.getInstruction() instanceof IF_ICMPGT
-//                    || handle.getInstruction() instanceof IF_ICMPLT
-//                    || handle.getInstruction() instanceof IF_ICMPGE
-//                    || handle.getInstruction() instanceof IF_ICMPLE) {
-//                try {
-//                    ilist.delete(handle.getPrev().getPrev(), handle.getNext().getNext().getNext());
-//                    count++;
-//                } catch (TargetLostException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-
-        /*
-        * load int
-        * loat int
-        * compare
-        * if compare_instruction true >> load match[]
-        *
-        * */
-
-//        InstructionFinder f = new InstructionFinder(il);
-//        String pat = "IfInstruction (ICONST_0|ICONST_1) GOTO (ICONST_0|ICONST_1)";
-//        for(Iterator e = f.search(pat); e.hasNext(); ) {
-//            InstructionHandle[] match = (InstructionHandle[])e.next();
-//            int value2 = stack.pop();
-//            int value1 = stack.pop();
-//            if (match[0].getInstruction instanceof)
-//            match[0].getTarget(); // Update target
-//            try {
-//                il.delete(match[1], match[5]);
-//            } catch(TargetLostException ex) {
-//
-//            }
-//        }
-
         if (count > 0) {
             return mgen.getMethod();
         }
         return null;
     }
 
-    public void ldcHandler(MethodGen mgen, ConstantPoolGen cpgen, ConstantPool cp, int index, Stack stack){
-        Constant constant = cp.getConstant(index);
-        if (constant instanceof ConstantDouble) {
-            stack.push((Double)((ConstantDouble)constant).getConstantValue(cp));
-        } else if (constant instanceof ConstantLong) {
-            stack.push((Long)((ConstantLong)constant).getConstantValue(cp));
-        } else if (constant instanceof ConstantFloat) {
-            stack.push((Float)((ConstantFloat)constant).getConstantValue(cp));
-        } else if (constant instanceof ConstantInteger) {
-            stack.push((Integer) ((ConstantInteger) constant).getConstantValue(cp));
+    public void removeInstruction(InstructionList ilist, InstructionHandle handle) {
+        ilist.redirectBranches(handle, handle.getPrev());
+        try {
+            ilist.delete(handle);
+        } catch (TargetLostException e) {
+            //e.printStackTrace();
         }
     }
 
-    public void optimize()
+    //Get top of stack value
+    public Number peekStack(InstructionHandle handle, ConstantPoolGen cpgen) {
+        Number value = null;
+        while(true) {
+            System.out.println("handle = " + handle);
+            if (handle.getInstruction() instanceof BIPUSH) {
+                value = ((BIPUSH) handle.getInstruction()).getValue();break;
+            } else if (handle.getInstruction() instanceof SIPUSH) {
+                value = ((SIPUSH) handle.getInstruction()).getValue();break;
+            } else if (handle.getInstruction() instanceof ICONST) {
+                value = ((ICONST) handle.getInstruction()).getValue();break;
+            } else if (handle.getInstruction() instanceof DCONST) {
+                value = ((DCONST) handle.getInstruction()).getValue();break;
+            } else if (handle.getInstruction() instanceof LCONST) {
+                value = ((LCONST) handle.getInstruction()).getValue();break;
+            } else if (handle.getInstruction() instanceof FCONST) {
+                value = ((FCONST) handle.getInstruction()).getValue();break;
+            } else if (handle.getInstruction() instanceof LDC) {
+                value = (Number)((LDC) handle.getInstruction()).getValue(cpgen);break;
+            } else if (handle.getInstruction() instanceof LDC2_W) {
+                value = (Number)((LDC2_W) handle.getInstruction()).getValue(cpgen);break;
+            } else {
+                handle = handle.getPrev();
+            }
+        }
+        return value;
+    }
+
+    // >> when we popStack, the last operation we are looking for is one of the listed ones
+    // as we iterate through instructions, we replace loading with popstack instruction types
+    // so we won't run into the wrong ones
+    // Get value of: bipush, sipush, iconst, dconst, lconst, fconst, ldc, ldc2_w
+    // Get last value loaded, and delete loading instruction
+    public Number popStack(InstructionList ilist, InstructionHandle handle, ConstantPoolGen cpgen) {
+        Number value = null;
+        while(true) {
+            if (handle.getInstruction() instanceof BIPUSH) {
+                value = ((BIPUSH) handle.getInstruction()).getValue();
+                removeInstruction(ilist, handle); break;
+            } else if (handle.getInstruction() instanceof SIPUSH) {
+                value = ((SIPUSH) handle.getInstruction()).getValue();
+                removeInstruction(ilist, handle); break;
+            } else if (handle.getInstruction() instanceof ICONST) {
+                value = ((ICONST) handle.getInstruction()).getValue();
+                removeInstruction(ilist, handle);break;
+            } else if (handle.getInstruction() instanceof DCONST) {
+                value = ((DCONST) handle.getInstruction()).getValue();
+                removeInstruction(ilist, handle);break;
+            } else if (handle.getInstruction() instanceof LCONST) {
+                value = ((LCONST) handle.getInstruction()).getValue();
+                removeInstruction(ilist, handle);break;
+            } else if (handle.getInstruction() instanceof FCONST) {
+                value = ((FCONST) handle.getInstruction()).getValue();
+                removeInstruction(ilist, handle);break;
+            } else if (handle.getInstruction() instanceof LDC) {
+                value = (Number)((LDC) handle.getInstruction()).getValue(cpgen);
+                removeInstruction(ilist, handle);break;
+            } else if (handle.getInstruction() instanceof LDC2_W) {
+                value = (Number)((LDC2_W) handle.getInstruction()).getValue(cpgen);
+                removeInstruction(ilist, handle);break;
+            } else {
+                handle = handle.getPrev();
+            }
+        }
+        return value;
+    }
+
+    public void optimizeMethod(ClassGen cgen, ConstantPoolGen cpgen, Method m, int length)
     {
-        ClassGen cgen = new ClassGen(original);
-        ConstantPoolGen cpgen = cgen.getConstantPool();
         ConstantPool cp = cpgen.getConstantPool();
         Constant[] constants = cp.getConstantPool();
+        MethodGen mgen = new MethodGen(m, original.getClassName(), cpgen);
+        InstructionList ilist = mgen.getInstructionList();
 
-        Method[] methods = cgen.getMethods();
-        HashMap localvars = new HashMap();
+        System.out.println(original.getClassName() + ": Method " + m + "/" + length +
+                " : " + m.getName() + " : " + ilist.getLength() + " instructions");
 
-        for (int m = 0; m < methods.length; ++m) {
+        InstructionHandle handle = ilist.getStart();
+        printInstructions(ilist, cp);
+        while (handle != null) {
+//            System.out.println("===HANDLE=== " + handle);
 
-            Stack<Object> stack = new Stack<Object>();
-            MethodGen mgen = new MethodGen(methods[m], original.getClassName(), cpgen);
-            InstructionList ilist = mgen.getInstructionList();
+            //if it's a storing instruction >> find the next loading instruction that has same index
+            // >> keep looking for instruction unless it's a store instruction with same index
+            // >> once loading instruction is found, get value at index; replace it with push instruction
+            // (inside other code)
 
-            System.out.println(original.getClassName() + ": Method " + m + "/" + methods.length +
-                    " : " + methods[m].getName() + " : " + ilist.getLength() + " instructions");
+            // see store instruction >> while no store instruction of same index/not at the end of list, keep going
+            // if loading instruction with same index, replace by push instruction
+            //      look for next loading instruction with same index
+            // else look at next instruction
+            // remove storing instruction
+            if (handle.getInstruction() instanceof StoreInstruction) {
+                int index = ((IndexedInstruction) handle.getInstruction()).getIndex();
+                InstructionHandle storeHandle = handle;
+                InstructionHandle currentHandle = handle.getNext();
+                Number constant = popStack(ilist, storeHandle, cpgen);
 
-            LocalVariableGen lgen;
-            printInstructions(ilist, cp);
-            int i = 0;
-            while (i < ilist.getLength()) {
-                Instruction current = ilist.getInstructions()[i];
-                int[] positions = ilist.getInstructionPositions();
-
-                short op = current.getOpcode();
-                if (current instanceof IndexedInstruction) {
-                    int index = ((IndexedInstruction) current).getIndex();
-                    switch(op) {
-                        //storing anything into hashmap of local variables
-                        case 0x3a:
-                        case 0x38:
-                        case 0x36:
-                        case 0x37:
-                        case 0x39: localvars.put(index, stack.peek()); break;
+                while (!(currentHandle.getInstruction() instanceof StoreInstruction && ((StoreInstruction)currentHandle.getInstruction()).getIndex() == index) && currentHandle != null) {
+                    if (currentHandle.getInstruction() instanceof LoadInstruction && ((LoadInstruction)currentHandle.getInstruction()).getIndex() == index) {
+                        InstructionHandle loadHandle = currentHandle;
+                        currentHandle = currentHandle.getNext();
+                        optimiseLoadingOp(ilist, loadHandle, mgen, cpgen, constant);
+                    } else {
+                        currentHandle = currentHandle.getNext();
                     }
-                    if (op >= 0x12 && op <= 0x14) { //Push constant[#index] from constant pool
-                        ldcHandler(mgen, cpgen, cp, index, stack);
-                    }
-                    else if (op >= 0x15 && op <= 0x19){ //Load from local var[#index]
-                        stack.push((Number)localvars.get(index));
-                    }
-                    else if (op >= 0x30 && op <= 0x35) { //Load __ from array[#index]
-                        //                    stack.push();
+                    if (currentHandle == null) {
+                        break;
                     }
                 }
-
-                switch(op) {
-                    case 0x57: stack.pop(); break;
-                    case 0x58: pop2(stack); break;
-                    case 0x01: stack.push(null); break;
-                    case 0x59: stack.push(stack.peek()); break;
-
-                    case 0x0e: stack.push(new Double(0.0)); break;
-                    case 0x0f: stack.push(new Double(1.0)); break;
-                    case 0x09: stack.push(new Long(0)); break;
-                    case 0x0a: stack.push(new Long(1)); break;
-
-
-                    /*
-                    * INSTEAD OF PERFORMING OPERATIONS HERE, WE ACCESS WHAT'S ON TOP OF THE STACK
-                     * AFTER THE ARITHMETIC OPERATIONS. WE CREATE A NEW CONSTANT FOR THAT, AND A LOADING
-                     * INSTRUCTION
-                    *   something like iadd.getValue();
-                    *
-                    *
-                    * */
-
-
-                    //adding two numbers
-                    case 0x63: stack.push((double)stack.pop() + (double)stack.pop());break;
-                    case 0x62: stack.push((float)stack.pop() + (float)stack.pop());break;
-                    case 0x61: stack.push((long)stack.pop() + (long)stack.pop());break;
-                    case 0x60: stack.push((int)stack.pop() + (int)stack.pop());break;
-
-                    //multiplying two numbers
-                    case 0x6b: stack.push((double)stack.pop() * (double)stack.pop());break;
-                    case 0x6a: stack.push((float)stack.pop() * (float)stack.pop());break;
-                    case 0x69: stack.push((long)stack.pop() * (long)stack.pop());break;
-                    case 0x68: stack.push((int)stack.pop() * (int)stack.pop());break;
-
-                    //subtracting two numbers
-                    case 0x67: stack.push(-(double)stack.pop() + (double)stack.pop());break;
-                    case 0x66: stack.push(-(float)stack.pop() + (float)stack.pop());break;
-                    case 0x65: stack.push(-(long)stack.pop() + (long)stack.pop());break;
-                    case 0x64: stack.push(-(int)stack.pop() + (int)stack.pop());break;
-
-                    //dividing two numbers
-                    case 0x6f: stack.push(1/(double)stack.pop() * (double)stack.pop());break;
-                    case 0x6e: stack.push(1/(float)stack.pop() * (float)stack.pop());break;
-                    case 0x6d: stack.push(1/(long)stack.pop() * (long)stack.pop());break;
-                    case 0x6c: stack.push(1/(int)stack.pop() * (int)stack.pop());break;
-
-                    //bipush and sipush
-                    case 0x10:
-                    case 0x11: stack.push(parseBiSipush(current.toString(cp))); break;
-
-//                    //LOADING REFERENCE FROM LOCAL VARIABLES
-//                    case 0x2a: stack.push(localvars.get(0));break;
-//                    case 0x2b: stack.push(localvars.get(1));break;
-//                    case 0x2c: stack.push(localvars.get(2));break;
-//                    case 0x2d: stack.push(localvars.get(3));break;
-
-                    //storing anything into 0 of hashmap local variables
-                    case 0x4b:
-                    case 0x47:
-                    case 0x43:
-                    case 0x3b:
-                    case 0x3f:
-                        localvars.put(0, stack.peek());
-                        stack.pop(); break;
-
-                    //storing anything into 1 of hashmap local variables
-                    case 0x4c:
-                    case 0x48:
-                    case 0x44:
-                    case 0x3c:
-                    case 0x40:
-                        localvars.put(1, stack.peek());
-                        stack.pop(); break;
-
-                    //storing anything into 2 of hashmap local variables
-                    case 0x4d:
-                    case 0x49:
-                    case 0x45:
-                    case 0x3d:
-                    case 0x41: localvars.put(2, stack.peek()); stack.pop(); break;
-
-                    //storing anything into 3 of hashmap local variables
-                    case 0x4e:
-                    case 0x4a:
-                    case 0x46:
-                    case 0x3e:
-                    case 0x42: localvars.put(3, stack.peek()); stack.pop(); break;
-
-                    case 0x87: int in = (int)stack.pop();
-                        double out = (double) in;
-                        stack.push(out); break;
-                }
-
-                if (op >= 0x02 && op <= 0x08) { //Load int
-                    stack.push((int) op - 3);
-                }
-                //LOADING NUMBER (int, long, float, double) FROM LOCAL VARIABLES
-                else if (op == 0x26 || op == 0x22 || op == 0x1a || op == 0x1e) {
-                    stack.push(localvars.get(0));
-                }
-                else if (op == 0x27 || op == 0x23 || op == 0x1b || op == 0x1f) {
-                    stack.push(localvars.get(1));
-                }
-                else if (op == 0x28 || op == 0x24 || op == 0x1c || op == 0x20) {
-                    stack.push((Number)localvars.get(2));
-                }
-                else if (op == 0x29 || op == 0x25 || op == 0x1d || op == 0x21) {
-                    stack.push((Number)localvars.get(3));
-                }
-
-                Method optimisedArithmetic = optimiseArithmeticOp(ilist, positions[i], mgen, cpgen, stack);
-//                Method optimisedCompare = optimiseCompareOp(ilist, positions[i], mgen, cpgen, stack);
-//                System.out.println("opt" + optimisedCompare);
-                if (optimisedArithmetic != null) {
-                    methods[m] = optimisedArithmetic;
-                    i = 0; //Restart from the first instruction to optimise more, do so until everything is optimised
-//                }
-//                else if (optimisedCompare != null) {
-//                    methods[m] = optimisedCompare;
-//                    i = 0;
-                } else {
-                    i++;
-                }
+                removeInstruction(ilist, storeHandle);
+                cgen.replaceMethod(m, mgen.getMethod());
+                handle = ilist.getStart();
             }
-            System.out.println("STARTING OPTIMISATION...");
-            printInstructions(ilist, cp);
-            System.out.println("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
-//            printStack(stack);
+            //if it's an arithmetic operation >> get two previous loading values, operate, delete arith op, add loading instead
+            else if (handle.getInstruction() instanceof ArithmeticInstruction) {
+                optimiseArithmeticOp(ilist, handle, mgen, cpgen);
+                cgen.replaceMethod(m, mgen.getMethod());
+                handle = ilist.getStart();
+            }
+
+            else if (handle.getInstruction() instanceof ConversionInstruction) {
+                optimiseNumberConversion(ilist, handle, mgen, cpgen);
+                cgen.replaceMethod(m, mgen.getMethod());
+                handle = ilist.getStart();
+            }
+
+            else {
+                handle = handle.getNext();
+            }
+            ilist.setPositions(true);
+            //printInstructions(ilist, cp);
         }
+
+        // Checks whether jump handles are all within the current method
+        ilist.setPositions(true);
+        mgen.setMaxStack();
+        mgen.setMaxLocals();
+        // Generate the new optimised method
+        Method newMethod = mgen.getMethod();
+        // Replace the method in the original class
+        cgen.replaceMethod(m, newMethod);
+
+        // Debugging
+        System.out.println("OPTIMISING...");
+        printInstructions(ilist, cp);
+        System.out.println("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+
         this.optimized = gen.getJavaClass();
+    }
+
+    private void optimize() {
+        // Load the original class into a class generator
+        ClassGen cgen = new ClassGen(original);
+        ConstantPoolGen cpgen = cgen.getConstantPool();
+
+        // Do optimization here
+        Method[] methods = cgen.getMethods();
+        for (Method m : methods)
+        {
+            optimizeMethod(cgen, cpgen, m, methods.length);
+        }
+
+        // we generate a new class with modifications
+        // and store it in a member variable
+        this.optimized = cgen.getJavaClass();
     }
 
     public void printInstructions(InstructionList ilist, ConstantPool cp) {
         for (int j = 0; j < ilist.getLength(); ++j) {
             Instruction current = ilist.getInstructions()[j];
-            System.out.println("\t" + current.toString(cp));
-        }
-    }
-
-    public void printStack(Stack<Object> stack) {
-        System.out.println("Stack");
-        for (int i = 0; i < stack.size(); ++i) {
-            System.out.println(stack.get(i));
+            System.out.println("\t" + current);
         }
     }
 
@@ -412,3 +408,50 @@ public class ConstantFolder
         }
     }
 }
+
+//        else if (handle.getInstruction() instanceof LCMP) {
+//            try {
+//                long value2 = (long)popStack(ilist, handle, cpgen);
+//                long value1 = (long)popStack(ilist, handle, cpgen);
+//                int constant = 0;
+//                if (value1 < value2) {
+//                    constant = -1;
+//                } else if (value1 > value2) {
+//                    constant = 1;
+//                }
+//                ilist.append(handle, new PUSH(cpgen, constant));
+//                ilist.delete(handle.getPrev().getPrev(), handle);
+//                count++;
+//            } catch (TargetLostException e) {
+//                e.printStackTrace();
+//            }
+//        }
+
+//        else if (handle.getInstruction() instanceof IFEQ
+//                || handle.getInstruction() instanceof IFNE
+//                || handle.getInstruction() instanceof IFLT
+//                || handle.getInstruction() instanceof IFGE
+//                || handle.getInstruction() instanceof IFGT
+//                || handle.getInstruction() instanceof IFLE) {
+//            try {
+//                ilist.delete(handle, handle.getNext().getNext().getNext());
+//                count++;
+//            } catch (TargetLostException e) {
+//                e.printStackTrace();
+//            }
+//        }
+
+
+//            else if (handle.getInstruction() instanceof IF_ICMPEQ
+//                    || handle.getInstruction() instanceof IF_ICMPNE
+//                    || handle.getInstruction() instanceof IF_ICMPGT
+//                    || handle.getInstruction() instanceof IF_ICMPLT
+//                    || handle.getInstruction() instanceof IF_ICMPGE
+//                    || handle.getInstruction() instanceof IF_ICMPLE) {
+//                try {
+//                    ilist.delete(handle.getPrev().getPrev(), handle.getNext().getNext().getNext());
+//                    count++;
+//                } catch (TargetLostException e) {
+//                    e.printStackTrace();
+//                }
+//            }
