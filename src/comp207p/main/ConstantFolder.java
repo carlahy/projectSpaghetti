@@ -29,16 +29,61 @@ public class ConstantFolder {
         }
     }
 
-//    public Method optimiseCompareOp(InstructionList ilist, int position, MethodGen mgen, ConstantPoolGen cpgen, Stack stack) {
-//        int count = 0;
-//        InstructionHandle handle = ilist.findHandle(position);
-//
-//        if (count > 0) {
-//            return mgen.getMethod();
-//        }
-//        return null;
-//    }
+    // Replace Compare Instructions with a PUSH Compound Instruction
+    public void optimiseCompareOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
+        Number value2 = popStack(ilist, handle, cpgen);
+        Number value1 = popStack(ilist, handle, cpgen);
+        int constant = 0;
 
+        if (handle.getInstruction() instanceof DCMPG) {
+            if ((double)value1 > (double)value2) {
+                constant = 1;
+            } else if ((double)value1 < (double)value2) {
+                constant = -1;
+            }
+            cpgen.addInteger(constant);
+            ilist.append(handle, new PUSH(cpgen, constant));
+            removeInstruction(ilist, handle);
+        } else if (handle.getInstruction() instanceof DCMPL) {
+            if ((double)value1 < (double)value2) {
+                constant = 1;
+            } else if ((double)value1 > (double)value2) {
+                constant = -1;
+            }
+            cpgen.addInteger(constant);
+            ilist.append(handle, new PUSH(cpgen, constant));
+            removeInstruction(ilist, handle);
+        } else if (handle.getInstruction() instanceof FCMPG) {
+            if ((float)value1 > (float)value2) {
+                constant = 1;
+            } else if ((float)value1 < (float)value2) {
+                constant = -1;
+            }
+            cpgen.addInteger(constant);
+            ilist.append(handle, new PUSH(cpgen, constant));
+            removeInstruction(ilist, handle);
+        } else if (handle.getInstruction() instanceof FCMPL) {
+            if ((float)value1 < (float)value2) {
+                constant = 1;
+            } else if ((float)value1 > (float)value2) {
+                constant = -1;
+            }
+            cpgen.addInteger(constant);
+            ilist.append(handle, new PUSH(cpgen, constant));
+            removeInstruction(ilist, handle);
+        } else if (handle.getInstruction() instanceof LCMP) {
+            if ((long)value1 > (long)value2) {
+                constant = 1;
+            } else if ((double)value1 < (double)value2) {
+                constant = -1;
+            }
+            cpgen.addInteger(constant);
+            ilist.append(handle, new PUSH(cpgen, constant));
+            removeInstruction(ilist, handle);
+        }
+    }
+
+    // Replace ConversionInstruction with a PUSH Compound Instruction
     public void optimiseNumberConversion(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
         Number constant = popStack(ilist, handle, cpgen);
         if (handle.getInstruction() instanceof I2D
@@ -86,8 +131,27 @@ public class ConstantFolder {
 
     }
 
+    // Get int value at constant index; increment int value; update constant value at index;
+    // Replace iinc with push with reference to constant index;
+
+//    // Replace IINC Instruction with a PUSH Compound Instruction
+//    public void optimiseIncrementOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
+//        int index = ((IINC) handle.getInstruction()).getIndex();
+//        int increment = ((IINC) handle.getInstruction()).getIncrement();
+//
+//        int intconstant = (int)((ConstantInteger)cpgen.getConstant(index)).getBytes();
+//        intconstant = intconstant + increment;
+//
+//        //Updating Constant Pool with incremented integer
+//        ConstantInteger newIntConstant = new ConstantInteger(intconstant);
+//        cpgen.setConstant(index, newIntConstant);
+//
+//        ilist.append(handle, new PUSH(cpgen, (int)intconstant));
+//        removeInstruction(ilist, handle);
+//    }
+
     // Replace LoadInstruction with a PUSH Compound Instruction
-    public Method optimiseLoadingOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen, Number constant) {
+    public void optimiseLoadingOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen, Number constant) {
         if (handle.getInstruction() instanceof ILOAD) {
             cpgen.addInteger((int)constant);
             ilist.append(handle, new PUSH(cpgen, (int)constant));
@@ -105,7 +169,6 @@ public class ConstantFolder {
             ilist.append(handle, new PUSH(cpgen, (long)constant));
             removeInstruction(ilist, handle);
         }
-        return mgen.getMethod();
     }
 
     // Perform arithmetic operation
@@ -195,7 +258,7 @@ public class ConstantFolder {
     }
 
     // Replace arithmetic operation with single load instruction
-    public Method optimiseArithmeticOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
+    public void optimiseArithmeticOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
         int count = 0;
         Number constant = evaluateArithmeticOp(ilist, handle, cpgen);
         if (constant instanceof Double) {
@@ -238,10 +301,6 @@ public class ConstantFolder {
                 e.printStackTrace();
             }
         }
-        if (count > 0) {
-            return mgen.getMethod();
-        }
-        return null;
     }
 
     public void removeInstruction(InstructionList ilist, InstructionHandle handle) {
@@ -325,6 +384,12 @@ public class ConstantFolder {
                 handle = ilist.getStart();
             }
 
+//            else if (handle.getInstruction() instanceof IINC) {
+//                optimiseIncrementOp(ilist, handle, mgen, cpgen);
+//                cgen.replaceMethod(m, mgen.getMethod());
+//                handle = ilist.getStart();
+//            }
+
             else if (handle.getInstruction() instanceof ArithmeticInstruction) {
                 optimiseArithmeticOp(ilist, handle, mgen, cpgen);
                 cgen.replaceMethod(m, mgen.getMethod());
@@ -333,6 +398,17 @@ public class ConstantFolder {
 
             else if (handle.getInstruction() instanceof ConversionInstruction) {
                 optimiseNumberConversion(ilist, handle, mgen, cpgen);
+                cgen.replaceMethod(m, mgen.getMethod());
+                handle = ilist.getStart();
+            }
+
+            // Compare Instructions
+            else if (handle.getInstruction() instanceof DCMPG
+                    || handle.getInstruction() instanceof DCMPL
+                    || handle.getInstruction() instanceof FCMPG
+                    || handle.getInstruction() instanceof FCMPL
+                    || handle.getInstruction() instanceof LCMP) {
+                optimiseCompareOp(ilist, handle, mgen, cpgen);
                 cgen.replaceMethod(m, mgen.getMethod());
                 handle = ilist.getStart();
             }

@@ -34,9 +34,5 @@ public class DynamicVariableFolding {
         a = 4;
         b = a + 2;
         return a * b;
-        //fold b.
-        //multiply an int with double
-        //b-a is the same as a, so no need of b - remove it.
-        //will return just one load --> a*b
     }
 }
