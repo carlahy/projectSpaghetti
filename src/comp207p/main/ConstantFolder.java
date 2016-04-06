@@ -29,7 +29,7 @@ public class ConstantFolder {
         }
     }
 
-    // Replace Compare Instructions with a PUSH Compound Instruction
+    // Replace Compare Instructions with a PUSH Instruction
     public void optimiseCompareOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
         Number value2 = popStack(ilist, handle, cpgen);
         Number value1 = popStack(ilist, handle, cpgen);
@@ -83,7 +83,7 @@ public class ConstantFolder {
         }
     }
 
-    // Replace ConversionInstruction with a PUSH Compound Instruction
+    // Replace ConversionInstruction with a PUSH Instruction
     public void optimiseNumberConversion(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
         Number constant = popStack(ilist, handle, cpgen);
         if (handle.getInstruction() instanceof I2D
@@ -150,7 +150,7 @@ public class ConstantFolder {
 //        removeInstruction(ilist, handle);
 //    }
 
-    // Replace LoadInstruction with a PUSH Compound Instruction
+    // Replace LoadInstruction with a PUSH Instruction
     public void optimiseLoadingOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen, Number constant) {
         if (handle.getInstruction() instanceof ILOAD) {
             cpgen.addInteger((int)constant);
@@ -257,7 +257,7 @@ public class ConstantFolder {
         return null;
     }
 
-    // Replace arithmetic operation with single load instruction
+    // Replace arithmetic operation with PUSH Instruction
     public void optimiseArithmeticOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
         int count = 0;
         Number constant = evaluateArithmeticOp(ilist, handle, cpgen);
@@ -347,15 +347,14 @@ public class ConstantFolder {
         return value;
     }
 
-    public void optimizeMethod(ClassGen cgen, ConstantPoolGen cpgen, Method m, int length)
-    {
+    public void optimizeMethod(ClassGen cgen, ConstantPoolGen cpgen, Method m, int length) {
         ConstantPool cp = cpgen.getConstantPool();
         Constant[] constants = cp.getConstantPool();
         MethodGen mgen = new MethodGen(m, original.getClassName(), cpgen);
         InstructionList ilist = mgen.getInstructionList();
 
-        System.out.println(original.getClassName() + ": Method " + m + "/" + length +
-                " : " + m.getName() + " : " + ilist.getLength() + " instructions");
+        System.out.println(original.getClassName() + ": Method " + m +
+                " : " + ilist.getLength() + " instructions");
 
         InstructionHandle handle = ilist.getStart();
         printInstructions(ilist, cp);
@@ -417,7 +416,6 @@ public class ConstantFolder {
                 handle = handle.getNext();
             }
             ilist.setPositions(true);
-            //printInstructions(ilist, cp);
         }
 
         // Checks whether jump handles are all within the current method
@@ -430,7 +428,7 @@ public class ConstantFolder {
         cgen.replaceMethod(m, newMethod);
 
         // Debugging
-        System.out.println("OPTIMISING...");
+        System.out.println("Optimised Method " + m + " to " + ilist.getLength() + " instructions");
         printInstructions(ilist, cp);
         System.out.println("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
 
@@ -479,50 +477,3 @@ public class ConstantFolder {
         }
     }
 }
-
-//        else if (handle.getInstruction() instanceof LCMP) {
-//            try {
-//                long value2 = (long)popStack(ilist, handle, cpgen);
-//                long value1 = (long)popStack(ilist, handle, cpgen);
-//                int constant = 0;
-//                if (value1 < value2) {
-//                    constant = -1;
-//                } else if (value1 > value2) {
-//                    constant = 1;
-//                }
-//                ilist.append(handle, new PUSH(cpgen, constant));
-//                ilist.delete(handle.getPrev().getPrev(), handle);
-//                count++;
-//            } catch (TargetLostException e) {
-//                e.printStackTrace();
-//            }
-//        }
-
-//        else if (handle.getInstruction() instanceof IFEQ
-//                || handle.getInstruction() instanceof IFNE
-//                || handle.getInstruction() instanceof IFLT
-//                || handle.getInstruction() instanceof IFGE
-//                || handle.getInstruction() instanceof IFGT
-//                || handle.getInstruction() instanceof IFLE) {
-//            try {
-//                ilist.delete(handle, handle.getNext().getNext().getNext());
-//                count++;
-//            } catch (TargetLostException e) {
-//                e.printStackTrace();
-//            }
-//        }
-
-
-//            else if (handle.getInstruction() instanceof IF_ICMPEQ
-//                    || handle.getInstruction() instanceof IF_ICMPNE
-//                    || handle.getInstruction() instanceof IF_ICMPGT
-//                    || handle.getInstruction() instanceof IF_ICMPLT
-//                    || handle.getInstruction() instanceof IF_ICMPGE
-//                    || handle.getInstruction() instanceof IF_ICMPLE) {
-//                try {
-//                    ilist.delete(handle.getPrev().getPrev(), handle.getNext().getNext().getNext());
-//                    count++;
-//                } catch (TargetLostException e) {
-//                    e.printStackTrace();
-//                }
-//            }
