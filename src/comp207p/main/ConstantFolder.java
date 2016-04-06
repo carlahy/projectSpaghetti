@@ -434,6 +434,7 @@ public class ConstantFolder {
         printInstructions(ilist, cp);
         System.out.println("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
 
+        cgen.setMajor(50);
         this.optimized = gen.getJavaClass();
     }
 
@@ -451,6 +452,7 @@ public class ConstantFolder {
 
         // we generate a new class with modifications
         // and store it in a member variable
+        cgen.setMajor(50);
         this.optimized = cgen.getJavaClass();
     }
 

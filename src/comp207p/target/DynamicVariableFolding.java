@@ -4,8 +4,8 @@ public class DynamicVariableFolding {
     public int methodOne() {
         int a = 42;
         int b = (a + 764) * 3;
-            a = b - 67;//2351
-        return b + 1234 - a;//1301
+            a = b - 67;
+        return b + 1234 - a;
     }
 
     public boolean methodTwo() {
