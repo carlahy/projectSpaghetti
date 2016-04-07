@@ -24,12 +24,12 @@ public class ConstantFolder {
             this.parser = new ClassParser(classFilePath);
             this.original = this.parser.parse();
             this.gen = new ClassGen(this.original);
-        } catch(IOException e){
-            e.printStackTrace();
+        } catch(IOException e) {
+            //e.printStackTrace();
         }
     }
 
-    // Replace Compare Instructions with a PUSH Instruction
+    // Replace CompareInstructions with a PUSH Instruction
     public void optimiseCompareOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
         Number value2 = popStack(ilist, handle, cpgen);
         Number value1 = popStack(ilist, handle, cpgen);
@@ -130,25 +130,6 @@ public class ConstantFolder {
         }
 
     }
-
-    // Get int value at constant index; increment int value; update constant value at index;
-    // Replace iinc with push with reference to constant index;
-
-//    // Replace IINC Instruction with a PUSH Compound Instruction
-//    public void optimiseIncrementOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen) {
-//        int index = ((IINC) handle.getInstruction()).getIndex();
-//        int increment = ((IINC) handle.getInstruction()).getIncrement();
-//
-//        int intconstant = (int)((ConstantInteger)cpgen.getConstant(index)).getBytes();
-//        intconstant = intconstant + increment;
-//
-//        //Updating Constant Pool with incremented integer
-//        ConstantInteger newIntConstant = new ConstantInteger(intconstant);
-//        cpgen.setConstant(index, newIntConstant);
-//
-//        ilist.append(handle, new PUSH(cpgen, (int)intconstant));
-//        removeInstruction(ilist, handle);
-//    }
 
     // Replace LoadInstruction with a PUSH Instruction
     public void optimiseLoadingOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen, Number constant) {
@@ -303,6 +284,7 @@ public class ConstantFolder {
         }
     }
 
+    // Safely delete Instruction from InstructionList
     public void removeInstruction(InstructionList ilist, InstructionHandle handle) {
         ilist.redirectBranches(handle, handle.getPrev());
         try {
@@ -383,12 +365,6 @@ public class ConstantFolder {
                 handle = ilist.getStart();
             }
 
-//            else if (handle.getInstruction() instanceof IINC) {
-//                optimiseIncrementOp(ilist, handle, mgen, cpgen);
-//                cgen.replaceMethod(m, mgen.getMethod());
-//                handle = ilist.getStart();
-//            }
-
             else if (handle.getInstruction() instanceof ArithmeticInstruction) {
                 optimiseArithmeticOp(ilist, handle, mgen, cpgen);
                 cgen.replaceMethod(m, mgen.getMethod());
@@ -401,7 +377,6 @@ public class ConstantFolder {
                 handle = ilist.getStart();
             }
 
-            // Compare Instructions
             else if (handle.getInstruction() instanceof DCMPG
                     || handle.getInstruction() instanceof DCMPL
                     || handle.getInstruction() instanceof FCMPG
@@ -441,15 +416,13 @@ public class ConstantFolder {
         ClassGen cgen = new ClassGen(original);
         ConstantPoolGen cpgen = cgen.getConstantPool();
 
-        // Do optimization here
         Method[] methods = cgen.getMethods();
         for (Method m : methods)
         {
             optimizeMethod(cgen, cpgen, m, methods.length);
         }
 
-        // we generate a new class with modifications
-        // and store it in a member variable
+        // Generate a new class with modifications and store it in a member variable
         cgen.setMajor(50);
         this.optimized = cgen.getJavaClass();
     }
