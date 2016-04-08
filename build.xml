@@ -115,6 +115,7 @@
     <mkdir dir="${testreports.optimised.dir}"/>
     <junit printsummary="true" showoutput="true" haltonfailure="true" fork="yes">
       <classpath refid="test.optimised.classpath"/>
+      <jvmarg value="-noverify"/>
       <formatter type="plain" usefile="true"/>
       <batchtest fork="yes" todir="${testreports.optimised.dir}">
         <fileset dir="${tests.dir}">
