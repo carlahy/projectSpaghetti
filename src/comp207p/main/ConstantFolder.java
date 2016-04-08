@@ -134,19 +134,19 @@ public class ConstantFolder {
     // Replace LoadInstruction with a PUSH Instruction
     public void optimiseLoadingOp(InstructionList ilist, InstructionHandle handle, MethodGen mgen, ConstantPoolGen cpgen, Number constant) {
         if (handle.getInstruction() instanceof ILOAD) {
-            cpgen.addInteger((int)constant);
+//            cpgen.addInteger((int)constant);
             ilist.append(handle, new PUSH(cpgen, (int)constant));
             removeInstruction(ilist, handle);
         } else if (handle.getInstruction() instanceof DLOAD) {
-            cpgen.addDouble((double)constant);
+//            cpgen.addDouble((double)constant);
             ilist.append(handle, new PUSH(cpgen, (double)constant));
             removeInstruction(ilist, handle);
         } else if (handle.getInstruction() instanceof FLOAD) {
-            cpgen.addFloat((float)constant);
+//            cpgen.addFloat((float)constant);
             ilist.append(handle, new PUSH(cpgen, (float)constant));
             removeInstruction(ilist, handle);
         } else if (handle.getInstruction() instanceof LLOAD) {
-            cpgen.addLong((long)constant);
+//            cpgen.addLong((long)constant);
             ilist.append(handle, new PUSH(cpgen, (long)constant));
             removeInstruction(ilist, handle);
         }
@@ -244,7 +244,7 @@ public class ConstantFolder {
         Number constant = evaluateArithmeticOp(ilist, handle, cpgen);
         if (constant instanceof Double) {
             try {
-                cpgen.addDouble((double)constant);
+//                cpgen.addDouble((double)constant);
                 ilist.append(handle, new PUSH(cpgen, (double)constant));
                 ilist.delete(handle);
                 count++;
@@ -254,7 +254,7 @@ public class ConstantFolder {
 
         } else if (constant instanceof Float) {
             try {
-                cpgen.addFloat((float)constant);
+//                cpgen.addFloat((float)constant);
                 ilist.append(handle, new PUSH(cpgen, (float)constant));
                 ilist.delete(handle);
                 count++;
@@ -264,7 +264,7 @@ public class ConstantFolder {
 
         } else if (constant instanceof Integer) {
             try {
-                cpgen.addInteger((int)constant);
+//                cpgen.addInteger((int)constant);
                 ilist.append(handle, new PUSH(cpgen, (int)constant));
                 ilist.delete(handle);
                 count++;
@@ -274,7 +274,7 @@ public class ConstantFolder {
 
         } else if (constant instanceof Long) {
             try {
-                cpgen.addLong((long)constant);
+//                cpgen.addLong((long)constant);
                 ilist.append(handle, new PUSH(cpgen, (long)constant));
                 ilist.delete(handle);
                 count++;
